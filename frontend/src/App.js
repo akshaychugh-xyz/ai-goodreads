@@ -12,8 +12,8 @@ function App() {
     };
 
     return (
-        <div className="App min-h-screen bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500">
-            <div className="container mx-auto px-4 py-8">
+        <div className="App min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-800">
+            <div className="container mx-auto px-4 py-8 space-y-8">
                 <HeaderWithValueProp />
                 <ImportBooks onImportComplete={handleImportComplete} />
                 <Recommendations 
