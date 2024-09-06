@@ -5,12 +5,15 @@ import { Button } from "./ui/button"
 import { Progress } from "./ui/progress"
 import { Upload, Check, ExternalLink, Upload as UploadIcon, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip"
+import { verifyGoodreadsCSV, replaceDataFolder } from '../services/api';
 
 const ImportBooks = ({ onImportComplete }) => {
     const [file, setFile] = useState(null);
     const [importing, setImporting] = useState(false);
     const [progress, setProgress] = useState(0);
     const [dataPresent, setDataPresent] = useState(false);
+    const [importStatus, setImportStatus] = useState(null);
+    const [errorMessage, setErrorMessage] = useState(null);
 
     useEffect(() => {
         checkDataPresence();
@@ -31,32 +34,41 @@ const ImportBooks = ({ onImportComplete }) => {
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
+        setImportStatus(null);
     };
 
     const handleImport = async () => {
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append('file', file);
-
         setImporting(true);
         setProgress(0);
+        setImportStatus(null);
+
         try {
-            await axios.post('http://localhost:3001/api/import-books', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setProgress(percentCompleted);
-                },
-            });
-            await checkDataPresence(); // Re-check data presence after import
+            // Step 1: Verify the CSV
+            const result = await verifyGoodreadsCSV(file);
+            
+            if (!result.isValid) {
+                setImportStatus('error');
+                setErrorMessage(result.message || 'The selected file is not a valid Goodreads CSV.');
+                setImporting(false);
+                return;
+            }
+
+            // Step 2: Replace the contents of the data folder
+            await replaceDataFolder(file);
+
+            // Step 3: Re-check data presence and update status
+            await checkDataPresence();
+            setImportStatus('success');
             onImportComplete();
         } catch (error) {
             console.error('Error importing books:', error);
+            setImportStatus('error');
+            setErrorMessage(error.message || 'An error occurred while importing books.');
+        } finally {
+            setImporting(false);
         }
-        setImporting(false);
     };
 
     const steps = [
@@ -114,10 +126,15 @@ const ImportBooks = ({ onImportComplete }) => {
                 </Button>
                 {importing && <Progress value={progress} className="w-full h-2 bg-purple-200" />}
             </div>
-            {dataPresent && (
+            {importStatus === 'success' && (
                 <div className="flex items-center justify-center mt-4 bg-green-500 bg-opacity-20 p-2 rounded-md">
                     <Check className="h-5 w-5 text-green-400 mr-2" />
                     <span className="text-sm text-green-300">Import successful</span>
+                </div>
+            )}
+            {importStatus === 'error' && (
+                <div className="flex items-center justify-center mt-4 bg-red-500 bg-opacity-20 p-2 rounded-md">
+                    <span className="text-sm text-red-300">{errorMessage}</span>
                 </div>
             )}
         </div>
