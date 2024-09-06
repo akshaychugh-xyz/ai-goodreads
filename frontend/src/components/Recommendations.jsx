@@ -5,7 +5,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Button } from "../components/ui/button"
 import { ScrollArea } from "../components/ui/scroll-area"
 import { Skeleton } from "../components/ui/skeleton"
-import { BookOpen, ChartPie, List } from 'lucide-react'
+import { BookOpen, ChartPie, List, User, BookMarked } from 'lucide-react'
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -99,41 +99,77 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete }) 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.keys(shelfCounts).length > 0 && (
-                    <div className="bg-white/10 p-6 rounded-lg">
-                        <div className="flex items-center space-x-2 text-white mb-4">
-                            <ChartPie className="h-6 w-6" />
-                            <h2 className="text-2xl font-bold">Your Library Overview</h2>
+                {Object.keys(shelfCounts).length > 0 ? (
+                    <div className="bg-white/10 p-6 rounded-lg shadow-lg flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2 text-white">
+                                <ChartPie className="h-6 w-6" />
+                                <h2 className="text-2xl font-bold">Your Library Overview</h2>
+                            </div>
+                            <div className="flex items-center space-x-2 text-white bg-purple-600 px-3 py-1 rounded-full">
+                                <User className="h-4 w-4" />
+                                <p className="text-sm font-semibold">{getProfileName(shelfCounts)}</p>
+                            </div>
                         </div>
-                        <div className="chart-container">
-                            <Pie 
-                                data={prepareChartData(shelfCounts)}
-                                options={{
-                                    plugins: {
-                                        legend: {
-                                            position: 'right',
-                                        },
-                                        tooltip: {
-                                            callbacks: {
-                                                label: function(context) {
-                                                    const label = context.label || '';
-                                                    const value = context.parsed || 0;
-                                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                                    const percentage = ((value / total) * 100).toFixed(1);
-                                                    return `${label}: ${value} (${percentage}%)`;
+                        <div className="text-white text-center mb-4">
+                            <p className="text-4xl font-bold">{Object.values(shelfCounts).reduce((a, b) => a + b, 0)}</p>
+                            <p className="text-sm uppercase tracking-wide">Total Books</p>
+                        </div>
+                        <div className="flex-grow flex items-center">
+                            <div className="w-1/4 text-white text-center">
+                                <p className="text-2xl font-bold">{shelfCounts['read'] || 0}</p>
+                                <p className="text-sm">Read</p>
+                            </div>
+                            <div className="w-1/2">
+                                <Pie 
+                                    data={prepareChartData(shelfCounts)}
+                                    options={{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: {
+                                                position: 'bottom',
+                                                labels: {
+                                                    color: 'white',
+                                                    font: { size: 12 }
+                                                }
+                                            },
+                                            tooltip: {
+                                                callbacks: {
+                                                    label: function(context) {
+                                                        const label = context.label || '';
+                                                        const value = context.parsed || 0;
+                                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                        const percentage = ((value / total) * 100).toFixed(1);
+                                                        return `${label}: ${value} (${percentage}%)`;
+                                                    }
                                                 }
                                             }
+                                        },
+                                        animation: {
+                                            animateScale: true,
+                                            animateRotate: true
                                         }
-                                    }
-                                }}
-                            />
+                                    }}
+                                />
+                            </div>
+                            <div className="w-1/4 text-white text-center">
+                                <p className="text-2xl font-bold">{shelfCounts['to-read'] || 0}</p>
+                                <p className="text-sm">To Read</p>
+                            </div>
                         </div>
-                        <p className="total-books mt-4 text-white">
-                            Total Books: {Object.values(shelfCounts).reduce((a, b) => a + b, 0)}
-                        </p>
-                        <p className="profile-name mt-2 text-white">
-                            Your Reader Profile: <strong>{getProfileName(shelfCounts)}</strong>
-                        </p>
+                        <div className="mt-4 text-white">
+                            <h3 className="text-lg font-semibold mb-2">Quick Stats</h3>
+                            <ul className="space-y-1">
+                                <li>Average books per month: {((shelfCounts['read'] || 0) / 12).toFixed(1)}</li>
+                                <li>Completion rate: {((shelfCounts['read'] || 0) / (Object.values(shelfCounts).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%</li>
+                                <li>Currently reading: {shelfCounts['currently-reading'] || 0}</li>
+                            </ul>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white/10 p-6 rounded-lg shadow-lg flex items-center justify-center">
+                        <p className="text-white text-center">No library data available. Import your books to see your overview.</p>
                     </div>
                 )}
 

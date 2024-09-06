@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const recommendations = require('./routes/recommendations');
 const db = require('./db/database');
+const importRoutes = require('./routes/importRoutes');
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(cors());
 
 app.use(bodyParser.json());
 app.use('/api', recommendations);
+app.use('/api', importRoutes);
 
 // Add this route to handle the root URL
 app.get('/', (req, res) => {
@@ -32,6 +34,9 @@ function startServer(port) {
         }
     });
 }
+
+// Add this line to log routes
+console.log('Routes:', app._router.stack.map(r => r.route?.path).filter(Boolean));
 
 // Start the server
 startServer(PORT);

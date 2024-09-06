@@ -1,6 +1,8 @@
 const fs = require('fs');
 const csv = require('csv-parser');
 const { db, initializeDatabase } = require('./db/database');
+const { DATA_DIR } = require('./config');
+const path = require('path');
 
 async function importGoodreadsData(filePath) {
     try {
@@ -67,4 +69,4 @@ async function importGoodreadsData(filePath) {
     }
 }
 
-importGoodreadsData('../data/goodreads_library_export.csv');
+importGoodreadsData(path.join(DATA_DIR, 'goodreads_library_export.csv'));
