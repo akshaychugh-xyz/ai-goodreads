@@ -15,9 +15,9 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete }) 
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        getShelfCounts();
         if (shouldRefresh) {
             getRecommendations();
+            getShelfCounts();
             setShouldRefresh(false);
         }
     }, [shouldRefresh, setShouldRefresh]);
@@ -35,16 +35,25 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete }) 
         setLoading(true);
         try {
             const data = await fetchRecommendations();
-            setRecommendations(data);
+            console.log('Received recommendations:', data);
+            if (Array.isArray(data)) {
+                setRecommendations(data);
+            } else if (data.message) {
+                console.log(data.message);
+                setRecommendations([]);
+            } else {
+                throw new Error('Unexpected response format');
+            }
         } catch (error) {
             console.error('Error fetching recommendations:', error);
+            console.error('Error details:', error.response?.data || error.message);
+            setRecommendations([]);
         }
         setLoading(false);
     };
 
     const handleImportComplete = () => {
-        getRecommendations();
-        getShelfCounts();
+        setShouldRefresh(true);
     };
 
     const prepareChartData = (shelfCounts) => {
@@ -194,11 +203,23 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete }) 
                             <ScrollArea className="h-[calc(100%-2rem)]">
                                 <ul className="space-y-4">
                                     {recommendations.map((book, index) => (
-                                        <li key={index} className="bg-white/10 p-4 rounded-lg text-white">
-                                            <h4 className="text-lg font-semibold">{book.title} ({book.number_of_pages} pages)</h4>
-                                            <p>Author: {book.author}</p>
-                                            <p>Shelf: {book.exclusive_shelf}</p>
-                                            {index === 2 && <p className="italic">Lucky Pick!</p>}
+                                        <li key={index} className="bg-white/10 p-4 rounded-lg text-white flex">
+                                            {book.cover_url && (
+                                                <img src={book.cover_url} alt={book.title} className="w-24 h-36 object-cover mr-4" />
+                                            )}
+                                            <div>
+                                                <h4 className="text-lg font-semibold">{book.title}</h4>
+                                                <p>Author: {book.author}</p>
+                                                <p>Pages: {book.number_of_pages}</p>
+                                                <p>Average Rating: {book.average_rating}</p>
+                                                <p>Shelf: {book.exclusive_shelf}</p>
+                                                {book.subjects && book.subjects.length > 0 ? (
+                                                    <p>Subjects: {book.subjects.join(', ')}</p>
+                                                ) : (
+                                                    <p>Subjects: Not available</p>
+                                                )}
+                                                {index === 2 && <p className="italic">Lucky Pick!</p>}
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>

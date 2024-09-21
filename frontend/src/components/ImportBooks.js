@@ -21,7 +21,12 @@ const ImportBooks = ({ onImportComplete }) => {
 
     const checkDataPresence = async () => {
         try {
-            const response = await axios.get('http://localhost:3001/api/shelf-counts');
+            const token = localStorage.getItem('token');
+            const response = await axios.get('http://localhost:3001/api/shelf-counts', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const hasData = Object.keys(response.data).length > 0;
             setDataPresent(hasData);
             if (hasData) {
@@ -43,31 +48,71 @@ const ImportBooks = ({ onImportComplete }) => {
         setImporting(true);
         setProgress(0);
         setImportStatus(null);
+        setErrorMessage(null);
+
+        console.log('Starting import process');
+
+        const importTimeout = setTimeout(() => {
+            console.log('Import timed out after 5 minutes');
+            setImporting(false);
+            setImportStatus('error');
+            setErrorMessage('Import timed out. Please try again or contact support if the issue persists.');
+        }, 300000); // 5 minutes timeout
 
         try {
             // Step 1: Verify the CSV
+            setProgress(25);
+            console.log('Verifying CSV');
             const result = await verifyGoodreadsCSV(file);
+            console.log('CSV verification result:', result);
             
             if (!result.isValid) {
-                setImportStatus('error');
-                setErrorMessage(result.message || 'The selected file is not a valid Goodreads CSV.');
-                setImporting(false);
-                return;
+                throw new Error(result.message || 'The selected file is not a valid Goodreads CSV.');
             }
 
             // Step 2: Replace the contents of the data folder
-            await replaceDataFolder(file);
+            setProgress(50);
+            console.log('Replacing data folder');
+            const replaceResult = await replaceDataFolder(file);
+            console.log('Replace data folder result:', replaceResult);
 
-            // Step 3: Re-check data presence and update status
+            // Step 3: Trigger data import on the backend
+            setProgress(75);
+            console.log('Triggering backend import');
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await axios.post('/api/import-books', formData, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            console.log('Backend import response:', response.data);
+
+            if (response.data.message === 'Books imported successfully') {
+                console.log(`Imported ${response.data.totalRows} books, including ${response.data.toReadCount} 'to-read' books`);
+                setImportStatus('success');
+                onImportComplete();
+            } else {
+                throw new Error('Failed to import books');
+            }
+
+            // Step 4: Re-check data presence and update status
+            setProgress(100);
+            console.log('Checking data presence');
             await checkDataPresence();
-            setImportStatus('success');
-            onImportComplete();
         } catch (error) {
             console.error('Error importing books:', error);
             setImportStatus('error');
             setErrorMessage(error.message || 'An error occurred while importing books.');
+            // Log the full error object for debugging
+            console.log('Full error object:', error);
         } finally {
+            clearTimeout(importTimeout);
             setImporting(false);
+            console.log('Import process finished');
         }
     };
 

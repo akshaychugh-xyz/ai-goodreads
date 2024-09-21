@@ -4,15 +4,21 @@ const cors = require('cors');
 const recommendations = require('./routes/recommendations');
 const db = require('./db/database');
 const importRoutes = require('./routes/importRoutes');
+const authRoutes = require('./routes/auth');
+const { initializeDatabase } = require('./db/database');
 
 const app = express();
 
 // Add this line to enable CORS
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // Replace with your frontend URL
+  credentials: true
+}));
 
 app.use(bodyParser.json());
 app.use('/api', recommendations);
 app.use('/api', importRoutes);
+app.use('/api/auth', authRoutes);
 
 // Add this route to handle the root URL
 app.get('/', (req, res) => {
@@ -21,18 +27,16 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 
-// Function to start the server
-function startServer(port) {
-    app.listen(port, () => {
-        console.log(`Server is running on port ${port}`);
-    }).on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-            console.log(`Port ${port} is busy, trying ${port + 1}...`);
-            startServer(port + 1);
-        } else {
-            console.error('Server error:', err);
-        }
-    });
+async function startServer(port) {
+    try {
+        await initializeDatabase();
+        app.listen(port, () => {
+            console.log(`Server is running on port ${port}`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
 }
 
 // Add this line to log routes
