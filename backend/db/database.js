@@ -12,56 +12,53 @@ const db = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
-// Keep the initializeDatabase function
-function initializeDatabase() {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            // Drop the existing table if it exists
-            db.run("DROP TABLE IF EXISTS books", (err) => {
-                if (err) {
-                    console.error("Error dropping table:", err);
-                    reject(err);
-                    return;
-                }
+const initializeDatabase = async () => {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        password TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
 
-                // Create the table with all columns
-                db.run(`CREATE TABLE books (
-                    id INTEGER PRIMARY KEY,
-                    title TEXT,
-                    author TEXT,
-                    author_lf TEXT,
-                    additional_authors TEXT,
-                    isbn TEXT,
-                    isbn13 TEXT,
-                    my_rating INTEGER,
-                    average_rating REAL,
-                    publisher TEXT,
-                    binding TEXT,
-                    number_of_pages INTEGER,
-                    year_published INTEGER,
-                    original_publication_year INTEGER,
-                    date_read TEXT,
-                    date_added TEXT,
-                    bookshelves TEXT,
-                    bookshelves_with_positions TEXT,
-                    exclusive_shelf TEXT,
-                    my_review TEXT,
-                    spoiler TEXT,
-                    private_notes TEXT,
-                    read_count INTEGER,
-                    owned_copies INTEGER
-                )`, (err) => {
-                    if (err) {
-                        console.error("Error creating table:", err);
-                        reject(err);
-                    } else {
-                        console.log("Database schema updated successfully");
-                        resolve();
-                    }
-                });
+      db.run(`CREATE TABLE IF NOT EXISTS books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        title TEXT,
+        author TEXT,
+        isbn TEXT,
+        average_rating REAL,
+        number_of_pages INTEGER,
+        exclusive_shelf TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )`);
+
+      // Check if user_id column exists
+      db.all(`PRAGMA table_info(books)`, (err, rows) => {
+        if (err) {
+          console.error('Error checking books table schema:', err);
+          reject(err);
+        } else {
+          const hasUserIdColumn = rows.some(row => row.name === 'user_id');
+          if (!hasUserIdColumn) {
+            db.run(`ALTER TABLE books ADD COLUMN user_id INTEGER`, (alterErr) => {
+              if (alterErr) {
+                console.error('Error adding user_id column:', alterErr);
+                reject(alterErr);
+              } else {
+                console.log('Added user_id column to books table');
+                resolve();
+              }
             });
-        });
+          } else {
+            console.log('user_id column already exists in books table');
+            resolve();
+          }
+        }
+      });
     });
-}
+  });
+};
 
 module.exports = { db, initializeDatabase };

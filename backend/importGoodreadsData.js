@@ -1,72 +1,82 @@
 const fs = require('fs');
 const csv = require('csv-parser');
-const { db, initializeDatabase } = require('./db/database');
-const { DATA_DIR } = require('./config');
-const path = require('path');
+const { db } = require('./db/database');
 
-async function importGoodreadsData(filePath) {
-    try {
-        await initializeDatabase();
-        const books = [];
+async function importGoodreadsData(filePath, userId) {
+	console.log(`Starting import for user ${userId} from file ${filePath}`);
+	return new Promise((resolve, reject) => {
+		const books = [];
+		let processedRows = 0;
+		let totalRows = 0;
+		let toReadCount = 0;
 
-        fs.createReadStream(filePath)
-            .pipe(csv())
-            .on('data', (row) => {
-                books.push({
-                    id: row['Book Id'],
-                    title: row['Title'],
-                    author: row['Author'],
-                    author_lf: row['Author l-f'],
-                    additional_authors: row['Additional Authors'],
-                    isbn: row['ISBN'],
-                    isbn13: row['ISBN13'],
-                    my_rating: row['My Rating'],
-                    average_rating: row['Average Rating'],
-                    publisher: row['Publisher'],
-                    binding: row['Binding'],
-                    number_of_pages: row['Number of Pages'],
-                    year_published: row['Year Published'],
-                    original_publication_year: row['Original Publication Year'],
-                    date_read: row['Date Read'],
-                    date_added: row['Date Added'],
-                    bookshelves: row['Bookshelves'],
-                    bookshelves_with_positions: row['Bookshelves with positions'],
-                    exclusive_shelf: row['Exclusive Shelf'],
-                    my_review: row['My Review'],
-                    spoiler: row['Spoiler'],
-                    private_notes: row['Private Notes'],
-                    read_count: row['Read Count'],
-                    owned_copies: row['Owned Copies']
-                });
-            })
-            .on('end', () => {
-                db.serialize(() => {
-                    const stmt = db.prepare(`INSERT INTO books (
-                        id, title, author, author_lf, additional_authors, isbn, isbn13,
-                        my_rating, average_rating, publisher, binding, number_of_pages,
-                        year_published, original_publication_year, date_read, date_added,
-                        bookshelves, bookshelves_with_positions, exclusive_shelf,
-                        my_review, spoiler, private_notes, read_count, owned_copies
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-
-                    books.forEach(book => {
-                        stmt.run(
-                            book.id, book.title, book.author, book.author_lf, book.additional_authors,
-                            book.isbn, book.isbn13, book.my_rating, book.average_rating, book.publisher,
-                            book.binding, book.number_of_pages, book.year_published,
-                            book.original_publication_year, book.date_read, book.date_added,
-                            book.bookshelves, book.bookshelves_with_positions, book.exclusive_shelf,
-                            book.my_review, book.spoiler, book.private_notes, book.read_count,
-                            book.owned_copies
-                        );
-                    });
-                    stmt.finalize();
-                });
-                console.log('Goodreads data imported successfully.');
-            });
-    } catch (error) {
-        console.error('Error importing Goodreads data:', error);
-    }
+		fs.createReadStream(filePath)
+			.pipe(csv())
+			.on('data', (row) => {
+				totalRows++;
+				if (row['Exclusive Shelf'] === 'to-read') {
+					toReadCount++;
+				}
+				books.push({
+					user_id: userId,
+					title: row['Title'],
+					author: row['Author'],
+					isbn: row['ISBN13'] || row['ISBN'],
+					average_rating: parseFloat(row['Average Rating']) || 0,
+					number_of_pages: parseInt(row['Number of Pages']) || 0,
+					exclusive_shelf: row['Exclusive Shelf']
+				});
+				console.log(`Processing book: ${row['Title']} - Shelf: ${row['Exclusive Shelf']}`);
+			})
+			.on('end', async () => {
+				if (books.length > 0) {
+					await insertBooks(books);
+				}
+				console.log(`Import completed. Total rows: ${totalRows}, To-read books: ${toReadCount}`);
+				resolve({ totalRows, toReadCount });
+			})
+			.on('error', (error) => {
+				console.error('Error reading CSV:', error);
+				reject(error);
+			});
+	});
 }
 
-importGoodreadsData(path.join(DATA_DIR, 'goodreads_library_export.csv'));
+function insertBooks(books) {
+	return new Promise((resolve, reject) => {
+		db.serialize(() => {
+			const stmt = db.prepare(`INSERT OR REPLACE INTO books (
+				user_id, title, author, isbn, average_rating, number_of_pages, exclusive_shelf
+			) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+
+			db.run('BEGIN TRANSACTION');
+
+			books.forEach(book => {
+				stmt.run(
+					book.user_id, book.title, book.author, book.isbn,
+					book.average_rating, book.number_of_pages, book.exclusive_shelf,
+					(err) => {
+						if (err) {
+							console.error('Error inserting book:', err);
+						}
+					}
+				);
+			});
+
+			stmt.finalize();
+
+			db.run('COMMIT', (err) => {
+				if (err) {
+					console.error('Error committing transaction:', err);
+					db.run('ROLLBACK');
+					reject(err);
+				} else {
+					console.log(`Successfully inserted ${books.length} books`);
+					resolve();
+				}
+			});
+		});
+	});
+}
+
+module.exports = { importGoodreadsData };
