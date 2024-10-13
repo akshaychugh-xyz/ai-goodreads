@@ -9,8 +9,8 @@ import { verifyGoodreadsCSV, replaceDataFolder } from '../services/api';
 
 const ImportBooks = ({ onImportComplete }) => {
     const [file, setFile] = useState(null);
-    const [importing, setImporting] = useState(false);
-    const [progress, setProgress] = useState(0);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState('');
     const [dataPresent, setDataPresent] = useState(false);
     const [importStatus, setImportStatus] = useState(null);
     const [errorMessage, setErrorMessage] = useState(null);
@@ -45,8 +45,8 @@ const ImportBooks = ({ onImportComplete }) => {
     const handleImport = async () => {
         if (!file) return;
 
-        setImporting(true);
-        setProgress(0);
+        setIsUploading(true);
+        setUploadStatus('');
         setImportStatus(null);
         setErrorMessage(null);
 
@@ -54,14 +54,14 @@ const ImportBooks = ({ onImportComplete }) => {
 
         const importTimeout = setTimeout(() => {
             console.log('Import timed out after 5 minutes');
-            setImporting(false);
-            setImportStatus('error');
+            setIsUploading(false);
+            setUploadStatus('error');
             setErrorMessage('Import timed out. Please try again or contact support if the issue persists.');
         }, 300000); // 5 minutes timeout
 
         try {
             // Step 1: Verify the CSV
-            setProgress(25);
+            setUploadStatus(25);
             console.log('Verifying CSV');
             const result = await verifyGoodreadsCSV(file);
             console.log('CSV verification result:', result);
@@ -71,13 +71,13 @@ const ImportBooks = ({ onImportComplete }) => {
             }
 
             // Step 2: Replace the contents of the data folder
-            setProgress(50);
+            setUploadStatus(50);
             console.log('Replacing data folder');
             const replaceResult = await replaceDataFolder(file);
             console.log('Replace data folder result:', replaceResult);
 
             // Step 3: Trigger data import on the backend
-            setProgress(75);
+            setUploadStatus(75);
             console.log('Triggering backend import');
             const formData = new FormData();
             formData.append('file', file);
@@ -100,7 +100,7 @@ const ImportBooks = ({ onImportComplete }) => {
             }
 
             // Step 4: Re-check data presence and update status
-            setProgress(100);
+            setUploadStatus(100);
             console.log('Checking data presence');
             await checkDataPresence();
         } catch (error) {
@@ -111,7 +111,7 @@ const ImportBooks = ({ onImportComplete }) => {
             console.log('Full error object:', error);
         } finally {
             clearTimeout(importTimeout);
-            setImporting(false);
+            setIsUploading(false);
             console.log('Import process finished');
         }
     };
@@ -164,12 +164,12 @@ const ImportBooks = ({ onImportComplete }) => {
             <div className="flex flex-col items-center space-y-4">
                 <Button 
                     onClick={handleImport} 
-                    disabled={!file || importing} 
+                    disabled={!file || isUploading} 
                     className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 py-2 rounded-md shadow-md"
                 >
-                    {importing ? 'Importing...' : 'Import Books'}
+                    {isUploading ? 'Importing...' : 'Import Books'}
                 </Button>
-                {importing && <Progress value={progress} className="w-full h-2 bg-purple-200" />}
+                {isUploading && <Progress value={uploadStatus} className="w-full h-2 bg-purple-200" />}
             </div>
             {importStatus === 'success' && (
                 <div className="flex items-center justify-center mt-4 bg-green-500 bg-opacity-20 p-2 rounded-md">

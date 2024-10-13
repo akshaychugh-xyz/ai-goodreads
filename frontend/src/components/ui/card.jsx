@@ -31,7 +31,9 @@ const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
       className
     )}
     {...props}
-  />
+  >
+    {props.children} {/* Ensure there's content */}
+  </h3>
 ))
 CardTitle.displayName = "CardTitle"
 
