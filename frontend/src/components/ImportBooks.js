@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Card, CardContent } from "./ui/card"
 import { Button } from "./ui/button"
 import { Progress } from "./ui/progress"
-import { Upload, Check, ExternalLink, Upload as UploadIcon, HelpCircle } from 'lucide-react'
+import { Check, ExternalLink, Upload as UploadIcon, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip"
 import { verifyGoodreadsCSV, replaceDataFolder } from '../services/api';
 
@@ -11,7 +10,6 @@ const ImportBooks = ({ onImportComplete }) => {
     const [file, setFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
-    const [dataPresent, setDataPresent] = useState(false);
     const [importStatus, setImportStatus] = useState(null);
     const [errorMessage, setErrorMessage] = useState(null);
 
