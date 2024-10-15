@@ -10,6 +10,7 @@ const ImportBooks = ({ onImportComplete }) => {
     const [file, setFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
+    const [setDataPresent] = useState(false);
     const [importStatus, setImportStatus] = useState(null);
     const [errorMessage, setErrorMessage] = useState(null);
 
