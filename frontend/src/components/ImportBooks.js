@@ -88,7 +88,6 @@ const ImportBooks = ({ onImportComplete }) => {
                     'Content-Type': 'multipart/form-data'
                 }
             });
-
             console.log('Backend import response:', response.data);
 
             if (response.data.message === 'Books imported successfully') {

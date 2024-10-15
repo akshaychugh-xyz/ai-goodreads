@@ -5,9 +5,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Button } from "./ui/button";
 import { ScrollArea } from "../components/ui/scroll-area"
 import { Skeleton } from "../components/ui/skeleton"
-import { BookOpen, ChartPie, List, User, BookMarked } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
-import ImportBooks from './ImportBooks';
+import { BookOpen, ChartPie, User } from 'lucide-react'
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -52,10 +50,6 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete }) 
             setRecommendations([]);
         }
         setLoading(false);
-    };
-
-    const handleImportComplete = () => {
-        setShouldRefresh(true);
     };
 
     const prepareChartData = (shelfCounts) => {
