@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Button } from "./ui/button"
 import { Progress } from "./ui/progress"
@@ -10,15 +10,10 @@ const ImportBooks = ({ onImportComplete }) => {
     const [file, setFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
-    const [setDataPresent] = useState(false);
     const [importStatus, setImportStatus] = useState(null);
     const [errorMessage, setErrorMessage] = useState(null);
 
-    useEffect(() => {
-        checkDataPresence();
-    }, []);
-
-    const checkDataPresence = async () => {
+    const checkDataPresence = useCallback(async () => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.get('http://localhost:3001/api/shelf-counts', {
@@ -27,14 +22,17 @@ const ImportBooks = ({ onImportComplete }) => {
                 }
             });
             const hasData = Object.keys(response.data).length > 0;
-            setDataPresent(hasData);
             if (hasData) {
-                onImportComplete(); // Notify parent component that data is present
+                onImportComplete();
             }
         } catch (error) {
             console.error('Error checking data presence:', error);
         }
-    };
+    }, [onImportComplete]);
+
+    useEffect(() => {
+        checkDataPresence();
+    }, [checkDataPresence]);
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
