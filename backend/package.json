@@ -7,6 +7,7 @@
     "dev": "nodemon server.js",
     "build": "echo 'No build step required for backend'",
     "heroku-postbuild": "npm install"
+    "db:init": "node db/database.js"
   },
   "keywords": [],
   "author": "",
