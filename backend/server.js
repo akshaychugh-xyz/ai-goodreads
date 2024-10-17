@@ -37,7 +37,7 @@ app.get('/api/test', (req, res) => {
 async function startServer(port) {
     try {
         await initializeDatabase();
-        
+        console.error('Failed to start server:', error);
         app.get('/test-db', async (req, res) => {
             try {
                 const client = await pool.connect();
@@ -48,7 +48,7 @@ async function startServer(port) {
                 res.status(500).send(`Database connection error: ${err.message}`);
             }
         });
-
+        module.exports = app;
         app.listen(port, () => {
             console.log(`Server is running on port ${port}`);
         });
@@ -63,5 +63,3 @@ console.log('Routes:', app._router.stack.map(r => r.route?.path).filter(Boolean)
 
 // Start the server
 startServer(PORT);
-
-module.exports = app;
