@@ -62,43 +62,43 @@ const ImportBooks = ({ onImportComplete }) => {
             console.log('Verifying CSV');
             const result = await verifyGoodreadsCSV(file);
             console.log('CSV verification result:', result);
-            
+            console.log('Verifying CSV');
             if (!result.isValid) {
                 throw new Error(result.message || 'The selected file is not a valid Goodreads CSV.');
             }
-
-            // Step 2: Replace the contents of the data folder
-            setUploadStatus(50);
-            console.log('Replacing data folder');
-            const replaceResult = await replaceDataFolder(file);
-            console.log('Replace data folder result:', replaceResult);
-
-            // Step 3: Trigger data import on the backend
-            setUploadStatus(75);
-            console.log('Triggering backend import');
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await axios.post('/api/import-books', formData, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'multipart/form-data'
+            if (!result.isValid) {
+                // Step 2: Replace the contents of the data folder
+                setUploadStatus(50);
+                console.log('Replacing data folder');
+                const replaceResult = await replaceDataFolder(file);
+                console.log('Replace data folder result:', replaceResult);
+                console.log('Replacing data folder');
+                // Step 3: Trigger data import on the backend
+                setUploadStatus(75);
+                console.log('Triggering backend import');
+                const formData = new FormData();
+                formData.append('file', file);
+                console.log('Triggering backend import');
+                const response = await axios.post('/api/import-books', formData, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                console.log('Backend import response:', response.data);
+                if (response.data.message === 'Books imported successfully') {
+                    console.log(`Imported ${response.data.totalRows} books, including ${response.data.toReadCount} 'to-read' books`);
+                    setImportStatus('success');
+                    onImportComplete();
+                } else {
+                    throw new Error('Failed to import books');
                 }
-            });
-            console.log('Backend import response:', response.data);
-
-            if (response.data.message === 'Books imported successfully') {
-                console.log(`Imported ${response.data.totalRows} books, including ${response.data.toReadCount} 'to-read' books`);
-                setImportStatus('success');
                 onImportComplete();
-            } else {
-                throw new Error('Failed to import books');
+                // Step 4: Re-check data presence and update status
+                setUploadStatus(100);
+                console.log('Checking data presence');
+                await checkDataPresence();
             }
-
-            // Step 4: Re-check data presence and update status
-            setUploadStatus(100);
-            console.log('Checking data presence');
-            await checkDataPresence();
         } catch (error) {
             console.error('Error importing books:', error);
             setImportStatus('error');

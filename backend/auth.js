@@ -19,4 +19,18 @@ async function comparePassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
 
-module.exports = { generateToken, verifyToken, hashPassword, comparePassword };
+function verifyTokenFromCookie(req, res, next) {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid token' });
+  }
+}
+
+module.exports = { generateToken, verifyToken, hashPassword, comparePassword, verifyTokenFromCookie };

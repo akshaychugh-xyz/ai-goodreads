@@ -1,51 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../db/database');
+const { pool } = require('../db/database');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const { importGoodreadsData } = require('../importGoodreadsData');
 const axios = require('axios');
-const { verifyToken } = require('../auth');
-
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (token == null) return res.sendStatus(401);
-
-  try {
-    const user = verifyToken(token);
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.sendStatus(403);
-  }
-}
+const { verifyToken, verifyTokenFromCookie } = require('../auth');
 
 // New route to fetch shelf counts
-router.get('/shelf-counts', authenticateToken, (req, res) => {
-    db.all("SELECT exclusive_shelf, COUNT(DISTINCT title) as count FROM books WHERE user_id = ? GROUP BY exclusive_shelf", [req.user.id], (err, rows) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        const counts = {};
-        rows.forEach(row => {
-            counts[row.exclusive_shelf] = row.count;
-        });
-        res.json(counts);
+router.get('/shelf-counts', verifyTokenFromCookie, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT exclusive_shelf, COUNT(DISTINCT title) as count FROM books WHERE user_id = $1 GROUP BY exclusive_shelf",
+      [req.user.id]
+    );
+    const counts = {};
+    result.rows.forEach(row => {
+      counts[row.exclusive_shelf] = parseInt(row.count);
     });
+    res.json(counts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Modify the existing recommendations route to include number of pages
-router.get('/recommendations', authenticateToken, async (req, res) => {
+router.get('/recommendations', verifyTokenFromCookie, async (req, res) => {
     try {
         const userId = req.user.id;
         
         // Fetch 'to-read' books for the current user
         const toReadBooks = await new Promise((resolve, reject) => {
-            db.all("SELECT * FROM books WHERE user_id = ? AND exclusive_shelf = 'to-read' ORDER BY RANDOM() LIMIT 2", [userId], (err, rows) => {
+            pool.query("SELECT * FROM books WHERE user_id = $1 AND exclusive_shelf = 'to-read' ORDER BY RANDOM() LIMIT 2", [userId], (err, result) => {
                 if (err) reject(err);
-                else resolve(rows);
+                else resolve(result.rows);
             });
         });
 
@@ -53,17 +41,17 @@ router.get('/recommendations', authenticateToken, async (req, res) => {
 
         console.log(`User ID: ${userId}`);
         console.log(`Total books in database: ${await new Promise((resolve, reject) => {
-            db.get("SELECT COUNT(*) as count FROM books WHERE user_id = ?", [userId], (err, row) => {
+            pool.query("SELECT COUNT(*) as count FROM books WHERE user_id = $1", [userId], (err, result) => {
                 if (err) reject(err);
-                else resolve(row.count);
+                else resolve(parseInt(result.rows[0].count));
             });
         })}`);
 
         // Fetch a 'lucky' book for the current user
         const luckyBook = await new Promise((resolve, reject) => {
-            db.get("SELECT * FROM books WHERE user_id = ? AND exclusive_shelf != 'to-read' ORDER BY RANDOM() LIMIT 1", [userId], (err, row) => {
+            pool.query("SELECT * FROM books WHERE user_id = $1 AND exclusive_shelf != 'to-read' ORDER BY RANDOM() LIMIT 1", [userId], (err, result) => {
                 if (err) reject(err);
-                else resolve(row);
+                else resolve(result.rows[0]);
             });
         });
 
@@ -78,18 +66,18 @@ router.get('/recommendations', authenticateToken, async (req, res) => {
 });
 
 // New route to fetch and display imported data
-router.get('/imported-books', authenticateToken, (req, res) => {
-    db.all("SELECT * FROM books WHERE user_id = ?", [req.user.id], (err, rows) => {
+router.get('/imported-books', verifyTokenFromCookie, (req, res) => {
+    pool.query("SELECT * FROM books WHERE user_id = $1", [req.user.id], (err, result) => {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
         }
-        res.json({ books: rows });
+        res.json({ books: result.rows });
     });
 });
 
 // New route to handle file uploads
-router.post('/import-books', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/import-books', verifyTokenFromCookie, upload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }

@@ -1,12 +1,11 @@
 const fs = require('fs');
 const csv = require('csv-parser');
-const { db } = require('./db/database');
+const { pool } = require('./db/database');
 
 async function importGoodreadsData(filePath, userId) {
 	console.log(`Starting import for user ${userId} from file ${filePath}`);
 	return new Promise((resolve, reject) => {
 		const books = [];
-		let processedRows = 0;
 		let totalRows = 0;
 		let toReadCount = 0;
 
@@ -26,7 +25,6 @@ async function importGoodreadsData(filePath, userId) {
 					number_of_pages: parseInt(row['Number of Pages']) || 0,
 					exclusive_shelf: row['Exclusive Shelf']
 				});
-				console.log(`Processing book: ${row['Title']} - Shelf: ${row['Exclusive Shelf']}`);
 			})
 			.on('end', async () => {
 				if (books.length > 0) {
@@ -42,41 +40,29 @@ async function importGoodreadsData(filePath, userId) {
 	});
 }
 
-function insertBooks(books) {
-	return new Promise((resolve, reject) => {
-		db.serialize(() => {
-			const stmt = db.prepare(`INSERT OR REPLACE INTO books (
-				user_id, title, author, isbn, average_rating, number_of_pages, exclusive_shelf
-			) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-
-			db.run('BEGIN TRANSACTION');
-
-			books.forEach(book => {
-				stmt.run(
-					book.user_id, book.title, book.author, book.isbn,
-					book.average_rating, book.number_of_pages, book.exclusive_shelf,
-					(err) => {
-						if (err) {
-							console.error('Error inserting book:', err);
-						}
-					}
-				);
-			});
-
-			stmt.finalize();
-
-			db.run('COMMIT', (err) => {
-				if (err) {
-					console.error('Error committing transaction:', err);
-					db.run('ROLLBACK');
-					reject(err);
-				} else {
-					console.log(`Successfully inserted ${books.length} books`);
-					resolve();
-				}
-			});
-		});
-	});
+async function insertBooks(books) {
+	const client = await pool.connect();
+	try {
+		await client.query('BEGIN');
+		for (const book of books) {
+			await client.query(`
+				INSERT INTO books (user_id, title, author, isbn, average_rating, number_of_pages, exclusive_shelf)
+				VALUES ($1, $2, $3, $4, $5, $6, $7)
+				ON CONFLICT (user_id, title, author) DO UPDATE SET
+				isbn = EXCLUDED.isbn,
+				average_rating = EXCLUDED.average_rating,
+				number_of_pages = EXCLUDED.number_of_pages,
+				exclusive_shelf = EXCLUDED.exclusive_shelf
+			`, [book.user_id, book.title, book.author, book.isbn, book.average_rating, book.number_of_pages, book.exclusive_shelf]);
+		}
+		await client.query('COMMIT');
+		console.log(`Successfully inserted ${books.length} books`);
+	} catch (err) {
+		await client.query('ROLLBACK');
+		throw err;
+	} finally {
+		client.release();
+	}
 }
 
 module.exports = { importGoodreadsData };

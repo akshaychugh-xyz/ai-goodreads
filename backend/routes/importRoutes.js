@@ -6,30 +6,7 @@ const path = require('path');
 const { DATA_DIR } = require('../config');
 
 const router = express.Router();
-const { verifyToken } = require('../auth');
-
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  console.log('Auth Header:', authHeader);
-  console.log('Token:', token);
-
-  if (token == null) {
-    console.log('No token provided');
-    return res.sendStatus(401);
-  }
-
-  try {
-    const user = verifyToken(token);
-    console.log('Verified user:', user);
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error('Token verification error:', error);
-    return res.sendStatus(403);
-  }
-}
+const { verifyToken, verifyTokenFromCookie } = require('../auth');
 
 const upload = multer({ 
   storage: multer.diskStorage({
@@ -53,7 +30,7 @@ const EXPECTED_HEADERS = [
     "Read Count", "Owned Copies"
 ];
 
-router.post('/verify-csv', authenticateToken, upload.single('file'), (req, res) => {
+router.post('/verify-csv', verifyTokenFromCookie, upload.single('file'), (req, res) => {
     console.log('Received verify-csv request');
     if (!req.file) {
         console.log('No file uploaded');
@@ -87,7 +64,7 @@ router.post('/verify-csv', authenticateToken, upload.single('file'), (req, res) 
         });
 });
 
-router.post('/replace-data', authenticateToken, upload.single('file'), (req, res) => {
+router.post('/replace-data', verifyTokenFromCookie, upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
     }
@@ -113,7 +90,7 @@ router.get('/test-import-route', (req, res) => {
     res.json({ message: 'Import routes are working' });
 });
 
-router.post('/import-books', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/import-books', verifyTokenFromCookie, upload.single('file'), async (req, res) => {
     console.log('Received import-books request');
     if (!req.file) {
         console.log('No file uploaded');

@@ -1,10 +1,15 @@
 import axios from 'axios';
 
-const API_URL = '/api';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
+
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+});
 
 export const fetchRecommendations = async () => {
     const token = localStorage.getItem('token');
-    const response = await axios.get(`${API_URL}/recommendations`, {
+    const response = await axiosInstance.get('/recommendations', {
         headers: {
             'Authorization': `Bearer ${token}`
         }
