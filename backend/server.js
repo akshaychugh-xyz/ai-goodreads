@@ -5,9 +5,8 @@ const recommendations = require('./routes/recommendations');
 const db = require('./db/database');
 const importRoutes = require('./routes/importRoutes');
 const authRoutes = require('./routes/auth');
-const { initializeDatabase } = require('./db/database');
+const { pool, initializeDatabase } = require('./db/database');
 const cookieParser = require('cookie-parser');
-const { pool } = require('./db/database');
 const PORT = process.env.PORT || 3001;
 
 const app = express();
