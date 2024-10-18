@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node db/database.js && node server.js",
+    "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "echo 'No build step required for backend'",
     "heroku-postbuild": "npm install",

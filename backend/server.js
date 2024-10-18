@@ -34,32 +34,23 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'API is working' });
 });
 
-async function startServer(port) {
-    try {
-        await initializeDatabase();
-        console.error('Failed to start server:', error);
-        app.get('/test-db', async (req, res) => {
-            try {
-                const client = await pool.connect();
-                const result = await client.query('SELECT NOW()');
-                client.release();
-                res.send(`Database connected. Current time: ${result.rows[0].now}`);
-            } catch (err) {
-                res.status(500).send(`Database connection error: ${err.message}`);
-            }
-        });
-        module.exports = app;
-        app.listen(port, () => {
-            console.log(`Server is running on port ${port}`);
-        });
-    } catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
-    }
+// Database initialization and server start
+async function startServer() {
+  try {
+    await initializeDatabase();
+    console.log('Database initialized successfully');
+    
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    process.exit(1);
+  }
 }
 
 // Add this line to log routes
 console.log('Routes:', app._router.stack.map(r => r.route?.path).filter(Boolean));
 
 // Start the server
-startServer(PORT);
+startServer();
