@@ -7,20 +7,8 @@ function generateToken(user) {
   return jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: '24h' });
 }
 
-function verifyToken(token) {
-  return jwt.verify(token, SECRET_KEY);
-}
-
-async function hashPassword(password) {
-  return bcrypt.hash(password, 10);
-}
-
-async function comparePassword(password, hash) {
-  return bcrypt.compare(password, hash);
-}
-
-function verifyTokenFromCookie(req, res, next) {
-  const token = req.cookies?.token;
+function verifyToken(req, res, next) {
+  const token = req.cookies?.token || req.headers['authorization']?.split(' ')[1];
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
@@ -33,4 +21,12 @@ function verifyTokenFromCookie(req, res, next) {
   }
 }
 
-module.exports = { generateToken, verifyToken, hashPassword, comparePassword, verifyTokenFromCookie };
+async function hashPassword(password) {
+  return bcrypt.hash(password, 10);
+}
+
+async function comparePassword(password, hash) {
+  return bcrypt.compare(password, hash);
+}
+
+module.exports = { generateToken, verifyToken, hashPassword, comparePassword };

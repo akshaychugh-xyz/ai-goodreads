@@ -4,7 +4,7 @@ import { Button } from "./ui/button"
 import { Progress } from "./ui/progress"
 import { Check, ExternalLink, Upload as UploadIcon, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip"
-import { verifyGoodreadsCSV, replaceDataFolder } from '../services/api';
+import { api } from '../api/api';
 
 const ImportBooks = ({ onImportComplete }) => {
     const [file, setFile] = useState(null);
@@ -15,20 +15,13 @@ const ImportBooks = ({ onImportComplete }) => {
 
     const checkDataPresence = useCallback(async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:3001/api/shelf-counts', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            const hasData = Object.keys(response.data).length > 0;
-            if (hasData) {
-                onImportComplete();
-            }
+            const shelfCounts = await api.getShelfCounts();
+            // Handle the response
         } catch (error) {
             console.error('Error checking data presence:', error);
+            // Handle the error (e.g., redirect to login if unauthorized)
         }
-    }, [onImportComplete]);
+    }, []);
 
     useEffect(() => {
         checkDataPresence();
@@ -60,7 +53,7 @@ const ImportBooks = ({ onImportComplete }) => {
             // Step 1: Verify the CSV
             setUploadStatus(25);
             console.log('Verifying CSV');
-            const result = await verifyGoodreadsCSV(file);
+            const result = await api.verifyGoodreadsCSV(file);
             console.log('CSV verification result:', result);
             console.log('Verifying CSV');
             if (!result.isValid) {
@@ -70,7 +63,7 @@ const ImportBooks = ({ onImportComplete }) => {
                 // Step 2: Replace the contents of the data folder
                 setUploadStatus(50);
                 console.log('Replacing data folder');
-                const replaceResult = await replaceDataFolder(file);
+                const replaceResult = await api.replaceDataFolder(file);
                 console.log('Replace data folder result:', replaceResult);
                 console.log('Replacing data folder');
                 // Step 3: Trigger data import on the backend

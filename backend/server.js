@@ -1,12 +1,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const recommendations = require('./routes/recommendations');
-const db = require('./db/database');
-const importRoutes = require('./routes/importRoutes');
-const authRoutes = require('./routes/auth');
-const { pool, initializeDatabase } = require('./db/database');
 const cookieParser = require('cookie-parser');
+const { pool } = require('./db/database');
+const authRoutes = require('./routes/auth');
+const protectedRoutes = require('./routes/protectedRoutes');
+const importRoutes = require('./routes/importRoutes');
+const recommendations = require('./routes/recommendations');
+const { verifyToken } = require('./auth');
 const PORT = process.env.PORT || 3001;
 
 const app = express();
@@ -17,39 +18,35 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 app.use(bodyParser.json());
-app.use('/api', recommendations);
-app.use('/api', importRoutes);
-app.use('/api/auth', authRoutes);
 app.use(cookieParser());
 
-// Add this route to handle the root URL
+app.use('/api/auth', authRoutes);
+app.use('/api', verifyToken, protectedRoutes);
+app.use('/api', verifyToken, importRoutes);
+app.use('/api', verifyToken, recommendations);
+
 app.get('/', (req, res) => {
-    res.send('Welcome to the Book Recommendation Service');
+  res.send('Welcome to the Book Recommendation Service');
 });
 
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'API is working' });
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
 });
 
-// Database initialization and server start
 async function startServer() {
   try {
-    await initializeDatabase();
-    console.log('Database initialized successfully');
+    await pool.connect();
+    console.log('Database connected successfully');
     
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    console.error('Failed to connect to the database:', error);
     process.exit(1);
   }
 }
 
-// Add this line to log routes
-console.log('Routes:', app._router.stack.map(r => r.route?.path).filter(Boolean));
-
-// Start the server
 startServer();

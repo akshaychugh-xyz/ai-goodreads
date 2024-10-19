@@ -4,9 +4,9 @@ const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
 const { DATA_DIR } = require('../config');
+const { verifyToken } = require('../auth');
 
 const router = express.Router();
-const { verifyToken, verifyTokenFromCookie } = require('../auth');
 
 const upload = multer({ 
   storage: multer.diskStorage({
@@ -30,7 +30,7 @@ const EXPECTED_HEADERS = [
     "Read Count", "Owned Copies"
 ];
 
-router.post('/verify-csv', verifyTokenFromCookie, upload.single('file'), (req, res) => {
+router.post('/verify-csv', verifyToken, upload.single('file'), (req, res) => {
     console.log('Received verify-csv request');
     if (!req.file) {
         console.log('No file uploaded');
@@ -38,15 +38,13 @@ router.post('/verify-csv', verifyTokenFromCookie, upload.single('file'), (req, r
     }
 
     console.log('File received:', req.file.originalname);
+    console.log('File details:', req.file);
+    console.log('File path:', req.file.path);
 
     let rowCount = 0;
     let toReadCount = 0;
 
-    const stream = require('stream');
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(req.file.buffer);
-
-    bufferStream
+    fs.createReadStream(req.file.path)
         .pipe(csv())
         .on('data', (row) => {
             rowCount++;
@@ -64,7 +62,7 @@ router.post('/verify-csv', verifyTokenFromCookie, upload.single('file'), (req, r
         });
 });
 
-router.post('/replace-data', verifyTokenFromCookie, upload.single('file'), (req, res) => {
+router.post('/replace-data', verifyToken, upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
     }
@@ -90,7 +88,7 @@ router.get('/test-import-route', (req, res) => {
     res.json({ message: 'Import routes are working' });
 });
 
-router.post('/import-books', verifyTokenFromCookie, upload.single('file'), async (req, res) => {
+router.post('/import-books', verifyToken, upload.single('file'), async (req, res) => {
     console.log('Received import-books request');
     if (!req.file) {
         console.log('No file uploaded');
@@ -109,5 +107,11 @@ router.post('/import-books', verifyTokenFromCookie, upload.single('file'), async
         res.status(500).json({ error: 'Error importing books' });
     }
 });
+
+// Add any other routes here
+// For example:
+// router.post('/some-route', verifyToken, upload.single('file'), (req, res) => {
+//     // Implementation for some route
+// });
 
 module.exports = router;

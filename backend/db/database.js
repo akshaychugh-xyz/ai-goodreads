@@ -3,10 +3,13 @@ require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+
+const db = {
+  query: (text, params) => pool.query(text, params),
+  get: (text, params) => pool.query(text, params).then(res => res.rows[0])
+};
 
 async function initializeDatabase() {
   const client = await pool.connect();
@@ -14,9 +17,9 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        email TEXT UNIQUE,
-        password TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -43,6 +46,8 @@ async function initializeDatabase() {
 }
 
 module.exports = {
+  query: (text, params) => pool.query(text, params),
+  db,
   pool,
   initializeDatabase
 };

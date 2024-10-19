@@ -27,8 +27,19 @@ async function importGoodreadsData(filePath, userId) {
 				});
 			})
 			.on('end', async () => {
+				console.log(`CSV parsing completed. Total rows: ${totalRows}, To-read books: ${toReadCount}`);
+				console.log(`Total books to insert: ${books.length}`);
 				if (books.length > 0) {
-					await insertBooks(books);
+					console.log('Sample book data:', books[0]);
+					try {
+						await insertBooks(books);
+						console.log('Books inserted successfully');
+					} catch (error) {
+						console.error('Error inserting books:', error);
+						reject(error);
+					}
+				} else {
+					console.log('No books to insert');
 				}
 				console.log(`Import completed. Total rows: ${totalRows}, To-read books: ${toReadCount}`);
 				resolve({ totalRows, toReadCount });
@@ -44,7 +55,9 @@ async function insertBooks(books) {
 	const client = await pool.connect();
 	try {
 		await client.query('BEGIN');
+		console.log(`Starting to insert ${books.length} books`);
 		for (const book of books) {
+			console.log(`Inserting book: ${book.title}`);
 			await client.query(`
 				INSERT INTO books (user_id, title, author, isbn, average_rating, number_of_pages, exclusive_shelf)
 				VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -59,6 +72,7 @@ async function insertBooks(books) {
 		console.log(`Successfully inserted ${books.length} books`);
 	} catch (err) {
 		await client.query('ROLLBACK');
+		console.error('Error in insertBooks:', err);
 		throw err;
 	} finally {
 		client.release();

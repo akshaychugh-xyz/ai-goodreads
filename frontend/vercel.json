@@ -14,5 +14,15 @@
       { "src": "/logo192.png", "dest": "/logo192.png" },
       { "src": "/logo512.png", "dest": "/logo512.png" },
       { "src": "/(.*)", "dest": "/index.html" }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/:path*",
+        "destination": "https://betterreads-backend-23631affce1d.herokuapp.com/api/:path*"
+      },
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
+      }
     ]
   }

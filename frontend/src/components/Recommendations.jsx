@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchRecommendations, fetchShelfCounts } from '../services/api';
+import { api } from '../api/api';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Button } from "./ui/button";
@@ -24,7 +24,7 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete }) 
 
     const getShelfCounts = async () => {
         try {
-            const counts = await fetchShelfCounts();
+            const counts = await api.fetchShelfCounts();
             setShelfCounts(counts);
         } catch (error) {
             console.error('Error fetching shelf counts:', error);
@@ -34,7 +34,7 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete }) 
     const getRecommendations = async () => {
         setLoading(true);
         try {
-            const data = await fetchRecommendations();
+            const data = await api.fetchRecommendations();
             console.log('Received recommendations:', data);
             if (Array.isArray(data)) {
                 setRecommendations(data);
