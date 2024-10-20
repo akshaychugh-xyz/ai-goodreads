@@ -25,9 +25,11 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete }) 
     const getShelfCounts = async () => {
         try {
             const counts = await api.fetchShelfCounts();
+            console.log('Received shelf counts:', counts);
             setShelfCounts(counts);
         } catch (error) {
             console.error('Error fetching shelf counts:', error);
+            console.error('Error details:', error.response?.data || error.message);
         }
     };
 

@@ -12,6 +12,7 @@ const ImportBooks = ({ onImportComplete }) => {
     const [uploadStatus, setUploadStatus] = useState('');
     const [importStatus, setImportStatus] = useState(null);
     const [errorMessage, setErrorMessage] = useState(null);
+    const [userBooks, setUserBooks] = useState([]);
 
     const checkDataPresence = useCallback(async () => {
         try {
@@ -35,19 +36,18 @@ const ImportBooks = ({ onImportComplete }) => {
     const handleImport = async () => {
         if (!file) return;
 
+        if (file.size > 50 * 1024 * 1024) { // 50MB limit
+            setErrorMessage('File size exceeds 50MB limit');
+            return;
+        }
+
         setIsUploading(true);
         setUploadStatus('');
         setImportStatus(null);
         setErrorMessage(null);
 
         console.log('Starting import process');
-
-        const importTimeout = setTimeout(() => {
-            console.log('Import timed out after 5 minutes');
-            setIsUploading(false);
-            setUploadStatus('error');
-            setErrorMessage('Import timed out. Please try again or contact support if the issue persists.');
-        }, 300000); // 5 minutes timeout
+        console.log('File details:', file);
 
         try {
             // Step 1: Verify the CSV
@@ -55,51 +55,35 @@ const ImportBooks = ({ onImportComplete }) => {
             console.log('Verifying CSV');
             const result = await api.verifyGoodreadsCSV(file);
             console.log('CSV verification result:', result);
-            console.log('Verifying CSV');
+
             if (!result.isValid) {
                 throw new Error(result.message || 'The selected file is not a valid Goodreads CSV.');
             }
-            if (!result.isValid) {
-                // Step 2: Replace the contents of the data folder
-                setUploadStatus(50);
-                console.log('Replacing data folder');
-                const replaceResult = await api.replaceDataFolder(file);
-                console.log('Replace data folder result:', replaceResult);
-                console.log('Replacing data folder');
-                // Step 3: Trigger data import on the backend
-                setUploadStatus(75);
-                console.log('Triggering backend import');
-                const formData = new FormData();
-                formData.append('file', file);
-                console.log('Triggering backend import');
-                const response = await axios.post('/api/import-books', formData, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Content-Type': 'multipart/form-data'
-                    }
-                });
-                console.log('Backend import response:', response.data);
-                if (response.data.message === 'Books imported successfully') {
-                    console.log(`Imported ${response.data.totalRows} books, including ${response.data.toReadCount} 'to-read' books`);
-                    setImportStatus('success');
-                    onImportComplete();
-                } else {
-                    throw new Error('Failed to import books');
-                }
-                onImportComplete();
-                // Step 4: Re-check data presence and update status
-                setUploadStatus(100);
-                console.log('Checking data presence');
-                await checkDataPresence();
+
+            // Step 2: Trigger data import on the backend
+            setUploadStatus(75);
+            console.log('Triggering backend import');
+            const response = await api.importBooks(file);
+            console.log('Backend import response:', response);
+
+            if (response.message === 'Books imported successfully') {
+                console.log(`Imported books. New shelf counts:`, response.shelfCounts);
+                setImportStatus('success');
+                onImportComplete(response.shelfCounts);
+            } else {
+                throw new Error('Failed to import books');
             }
+
+            // Step 3: Re-check data presence and update status
+            setUploadStatus(100);
+            console.log('Checking data presence');
+            await checkDataPresence();
         } catch (error) {
             console.error('Error importing books:', error);
             setImportStatus('error');
             setErrorMessage(error.message || 'An error occurred while importing books.');
-            // Log the full error object for debugging
             console.log('Full error object:', error);
         } finally {
-            clearTimeout(importTimeout);
             setIsUploading(false);
             console.log('Import process finished');
         }
@@ -109,6 +93,63 @@ const ImportBooks = ({ onImportComplete }) => {
         { icon: ExternalLink, text: "Go to Goodreads and export your library", link: "https://www.goodreads.com/review/import" },
         { icon: UploadIcon, text: "Upload CSV to get started" }
     ];
+
+    const handleTestDbConnection = async () => {
+        try {
+            const response = await api.testDbConnection();
+            console.log('Database connection test:', response);
+        } catch (error) {
+            console.error('Error testing database connection:', error);
+        }
+    };
+
+    const handleTestBooks = async () => {
+        try {
+            const response = await api.testBooks();
+            console.log('Test books:', response);
+        } catch (error) {
+            console.error('Error testing books:', error);
+        }
+    };
+
+    const handleFetchUserBooks = async () => {
+        try {
+            const books = await api.getUserBooks();
+            setUserBooks(books);
+        } catch (error) {
+            console.error('Error fetching user books:', error);
+        }
+    };
+
+    const handleCheckDatabase = async () => {
+        try {
+            const result = await api.checkDatabase();
+            console.log('Database check result:', result);
+            alert(`You have ${result.bookCount} books in the database.`);
+        } catch (error) {
+            console.error('Error checking database:', error);
+        }
+    };
+
+    const handleCheckSchema = async () => {
+        try {
+            const result = await api.checkSchema();
+            console.log('Database schema:', result);
+        } catch (error) {
+            console.error('Error checking schema:', error);
+        }
+    };
+
+    const handleCheckConnection = async () => {
+        try {
+            const result = await api.checkConnection();
+            console.log('Database connection check:', result);
+            alert(`Database connection successful. Timestamp: ${result.timestamp}`);
+        } catch (error) {
+            console.error('Error checking database connection:', error);
+            alert('Error checking database connection');
+        }
+    };
 
     return (
         <div className="mb-6 bg-white/10 rounded-lg shadow-xl p-6 text-white">
@@ -169,6 +210,22 @@ const ImportBooks = ({ onImportComplete }) => {
             {importStatus === 'error' && (
                 <div className="flex items-center justify-center mt-4 bg-red-500 bg-opacity-20 p-2 rounded-md">
                     <span className="text-sm text-red-300">{errorMessage}</span>
+                </div>
+            )}
+            <button onClick={handleTestDbConnection}>Test DB Connection</button>
+            <button onClick={handleTestBooks}>Test Books</button>
+            <button onClick={handleFetchUserBooks}>Fetch User Books</button>
+            <button onClick={handleCheckDatabase}>Check Database</button>
+            <button onClick={handleCheckSchema}>Check Schema</button>
+            <button onClick={handleCheckConnection}>Check DB Connection</button>
+            {userBooks.length > 0 && (
+                <div>
+                    <h3>User Books (first 100):</h3>
+                    <ul>
+                        {userBooks.slice(0, 20).map((book) => (
+                            <li key={book.id}>{book.title} by {book.author}</li>
+                        ))}
+                    </ul>
                 </div>
             )}
         </div>

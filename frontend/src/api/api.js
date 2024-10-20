@@ -4,11 +4,22 @@ export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
-  withCredentials: true,
 });
+
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 const getAuthHeader = () => {
   const token = localStorage.getItem('token');
+  console.log('Retrieved token:', token);
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
@@ -22,15 +33,31 @@ export const api = {
     return response.json();
   },
 
-  importBooks: async (formData) => {
-    const response = await fetch(`${API_URL}/import-books`, {
-      method: 'POST',
-      headers: {
-        ...getAuthHeader(),
-      },
-      body: formData,
-    });
-    return response.json();
+  importBooks: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`${API_URL}/import-books`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Book import failed. Status:', response.status);
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to import books: ${errorText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in importBooks:', error);
+      throw error;
+    }
   },
 
   login: async (credentials) => {
@@ -121,17 +148,28 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/verify-csv`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to verify CSV: ${await response.text()}`);
+    try {
+        const response = await fetch(`${API_URL}/verify-csv`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                // Remove 'Content-Type' header to let the browser set it automatically with the correct boundary
+            },
+            body: formData,
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('CSV verification failed. Status:', response.status);
+            console.error('Error response:', errorText);
+            throw new Error(`Failed to verify CSV: ${errorText}`);
+        }
+        
+        return response.json();
+    } catch (error) {
+        console.error('Error in verifyGoodreadsCSV:', error);
+        throw error;
     }
-    return response.json();
   },
 
   replaceDataFolder: async (file) => {
@@ -175,9 +213,67 @@ export const api = {
       throw error;
     }
   },
+
+  testBooks: async () => {
+    const response = await axiosInstance.get('/test-books', {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  testDbConnection: async () => {
+    try {
+      const response = await axiosInstance.get('/test-db');
+      return response.data;
+    } catch (error) {
+      console.error('Error testing database connection:', error);
+      throw error;
+    }
+  },
+
+  getUserBooks: async () => {
+    try {
+      const response = await axiosInstance.get('/user-books');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user books:', error);
+      throw error;
+    }
+  },
+
+  checkDatabase: async () => {
+    try {
+      const response = await axiosInstance.get('/check-db');
+      return response.data;
+    } catch (error) {
+      console.error('Error checking database:', error);
+      throw error;
+    }
+  },
+
+  checkSchema: async () => {
+    try {
+      const response = await axiosInstance.get('/check-schema');
+      return response.data;
+    } catch (error) {
+      console.error('Error checking schema:', error);
+      throw error;
+    }
+  },
+
+  checkConnection: async () => {
+    try {
+      const response = await axiosInstance.get('/check-connection');
+      return response.data;
+    } catch (error) {
+      console.error('Error checking database connection:', error);
+      throw error;
+    }
+  },
 };
 
 // Use this API_URL for all your API calls
+
 
 
 

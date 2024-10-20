@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../db/database');
+const { pool } = require('../db/database');
 const { generateToken, hashPassword, comparePassword } = require('../auth');
 
 router.post('/register', async (req, res) => {
@@ -14,7 +14,7 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await hashPassword(password);
     
     const query = 'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email';
-    const result = await db.query(query, [email, hashedPassword]);
+    const result = await pool.query(query, [email, hashedPassword]);
     
     const newUser = result.rows[0];
     const token = generateToken(newUser);
@@ -36,14 +36,19 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   
+  console.log('Login attempt for email:', email);
+
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
   try {
+    console.log('Attempting database query');
     const query = 'SELECT * FROM users WHERE email = $1';
-    const result = await db.query(query, [email]);
+    const result = await pool.query(query, [email]);
     
+    console.log('Query result:', result);
+
     if (result.rows.length === 0) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }

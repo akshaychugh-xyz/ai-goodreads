@@ -6,11 +6,6 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-const db = {
-  query: (text, params) => pool.query(text, params),
-  get: (text, params) => pool.query(text, params).then(res => res.rows[0])
-};
-
 async function initializeDatabase() {
   const client = await pool.connect();
   try {
@@ -26,14 +21,13 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS books (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER,
-        title TEXT,
+        user_id INTEGER REFERENCES users(id),
+        title TEXT NOT NULL,
         author TEXT,
         isbn TEXT,
         average_rating REAL,
         number_of_pages INTEGER,
-        exclusive_shelf TEXT,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        exclusive_shelf TEXT
       )
     `);
 
@@ -45,9 +39,4 @@ async function initializeDatabase() {
   }
 }
 
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-  db,
-  pool,
-  initializeDatabase
-};
+module.exports = { pool, initializeDatabase };
