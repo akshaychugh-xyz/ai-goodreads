@@ -23,6 +23,15 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+console.log('DATA_DIR:', DATA_DIR);
+fs.access(DATA_DIR, fs.constants.W_OK, (err) => {
+  if (err) {
+    console.error('DATA_DIR is not writable:', err);
+  } else {
+    console.log('DATA_DIR is writable');
+  }
+});
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'https://better-reads.akshaychugh.xyz');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -83,9 +92,19 @@ app.post('/api/import-books', verifyToken, async (req, res) => {
       res.json({ message: 'Books imported successfully', shelfCounts });
     } catch (error) {
       console.error('Error importing books:', error);
-      res.status(500).json({ error: 'An error occurred while importing books' });
+      res.status(500).json({ error: 'An error occurred while importing books', details: error.message });
     }
   });
+});
+
+app.get('/api/test-db', verifyToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ message: 'Database connection successful', time: result.rows[0].now });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({ error: 'Database connection failed', details: error.message });
+  }
 });
 
 app.listen(PORT, () => {

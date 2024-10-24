@@ -39,16 +39,9 @@ async function importBooks(filePath, userId) {
 					await client.query('BEGIN');
 					for (const book of books) {
 						const query = `
-							INSERT INTO books (user_id, title, author, isbn, average_rating, number_of_pages, exclusive_shelf)
-							VALUES ($1, $2, $3, $4, $5, $6, $7)
-							ON CONFLICT (user_id, isbn) DO UPDATE
-							SET title = EXCLUDED.title,
-								author = EXCLUDED.author,
-								average_rating = EXCLUDED.average_rating,
-								number_of_pages = EXCLUDED.number_of_pages,
-								exclusive_shelf = EXCLUDED.exclusive_shelf
-							WHERE books.user_id = EXCLUDED.user_id AND books.isbn = EXCLUDED.isbn
-							RETURNING (xmax = 0) AS inserted
+							INSERT INTO books (isbn, title, author, user_id)
+							VALUES ($1, $2, $3, $4)
+							ON CONFLICT DO NOTHING
 						`;
 						const result = await client.query(query, Object.values(book));
 						if (result.rows[0].inserted) {
