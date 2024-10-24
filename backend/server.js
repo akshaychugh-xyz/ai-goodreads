@@ -24,7 +24,7 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://ai-goodreads.vercel.app'],
+  origin: ['http://localhost:3000', 'https://betterreads-3i4wpmw4f-akshaychughxyz.vercel.app/'],
   credentials: true,
 };
 
