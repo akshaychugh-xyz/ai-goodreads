@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+export const API_URL = process.env.REACT_APP_API_URL || 'https://betterreads-backend-23631affce1d.herokuapp.com';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -138,9 +138,11 @@ export const api = {
   },
 
   fetchShelfCounts: async () => {
+    console.log('Making API call to fetch shelf counts...');
     const response = await axiosInstance.get(`/shelf-counts?_=${Date.now()}`, {
       headers: getAuthHeader(),
     });
+    console.log('API response for shelf counts:', response.data);
     return response.data;
   },
 

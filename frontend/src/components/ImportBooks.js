@@ -1,18 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { Button } from "./ui/button"
 import { Progress } from "./ui/progress"
-import { Check, ExternalLink, Upload as UploadIcon, HelpCircle } from 'lucide-react'
+import { ExternalLink, Upload as UploadIcon, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip"
 import { api } from '../api/api';
 
-const ImportBooks = ({ onImportComplete }) => {
+const ImportBooks = ({ onImportComplete, hasImportedData }) => {
     const [file, setFile] = useState(null);
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadStatus, setUploadStatus] = useState('');
-    const [importStatus, setImportStatus] = useState(null);
-    const [errorMessage, setErrorMessage] = useState(null);
+    const [importing, setImporting] = useState(false);
+    const [importError, setImportError] = useState(null);
     const [userBooks, setUserBooks] = useState([]);
+    const [shelfCounts, setShelfCounts] = useState({});
 
     const checkDataPresence = useCallback(async () => {
         try {
@@ -30,28 +28,25 @@ const ImportBooks = ({ onImportComplete }) => {
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
-        setImportStatus(null);
+        setImportError(null);
     };
 
     const handleImport = async () => {
         if (!file) return;
 
         if (file.size > 50 * 1024 * 1024) { // 50MB limit
-            setErrorMessage('File size exceeds 50MB limit');
+            setImportError('File size exceeds 50MB limit');
             return;
         }
 
-        setIsUploading(true);
-        setUploadStatus('');
-        setImportStatus(null);
-        setErrorMessage(null);
+        setImporting(true);
+        setImportError(null);
 
         console.log('Starting import process');
         console.log('File details:', file);
 
         try {
             // Step 1: Verify the CSV
-            setUploadStatus(25);
             console.log('Verifying CSV');
             const result = await api.verifyGoodreadsCSV(file);
             console.log('CSV verification result:', result);
@@ -61,30 +56,26 @@ const ImportBooks = ({ onImportComplete }) => {
             }
 
             // Step 2: Trigger data import on the backend
-            setUploadStatus(75);
             console.log('Triggering backend import');
             const response = await api.importBooks(file);
             console.log('Backend import response:', response);
 
             if (response.message === 'Books imported successfully') {
                 console.log(`Imported books. New shelf counts:`, response.shelfCounts);
-                setImportStatus('success');
                 onImportComplete(response.shelfCounts);
             } else {
                 throw new Error('Failed to import books');
             }
 
             // Step 3: Re-check data presence and update status
-            setUploadStatus(100);
             console.log('Checking data presence');
             await checkDataPresence();
         } catch (error) {
             console.error('Error importing books:', error);
-            setImportStatus('error');
-            setErrorMessage(error.message || 'An error occurred while importing books.');
+            setImportError(error.message || 'An error occurred while importing books.');
             console.log('Full error object:', error);
         } finally {
-            setIsUploading(false);
+            setImporting(false);
             console.log('Import process finished');
         }
     };
@@ -152,7 +143,13 @@ const ImportBooks = ({ onImportComplete }) => {
     };
 
     return (
-        <div className="mb-6 bg-white/10 rounded-lg shadow-xl p-6 text-white">
+        <div className="bg-white/10 p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-white mb-4">Import Your Books</h2>
+            {hasImportedData ? (
+                <p className="text-white mb-4">You've already imported your books. Want to update your library?</p>
+            ) : (
+                <p className="text-white mb-4">Get started by importing your Goodreads library:</p>
+            )}
             <div className="flex flex-col space-y-8 mb-8">
                 {steps.map((step, index) => (
                     <div key={index} className="flex items-start space-x-4">
@@ -194,22 +191,16 @@ const ImportBooks = ({ onImportComplete }) => {
             <div className="flex flex-col items-center space-y-4">
                 <Button 
                     onClick={handleImport} 
-                    disabled={!file || isUploading} 
+                    disabled={!file || importing} 
                     className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 py-2 rounded-md shadow-md"
                 >
-                    {isUploading ? 'Importing...' : 'Import Books'}
+                    {importing ? 'Importing...' : 'Import Books'}
                 </Button>
-                {isUploading && <Progress value={uploadStatus} className="w-full h-2 bg-purple-200" />}
+                {importing && <Progress value={100} className="w-full h-2 bg-purple-200" />}
             </div>
-            {importStatus === 'success' && (
-                <div className="flex items-center justify-center mt-4 bg-green-500 bg-opacity-20 p-2 rounded-md">
-                    <Check className="h-5 w-5 text-green-400 mr-2" />
-                    <span className="text-sm text-green-300">Import successful</span>
-                </div>
-            )}
-            {importStatus === 'error' && (
+            {importError && (
                 <div className="flex items-center justify-center mt-4 bg-red-500 bg-opacity-20 p-2 rounded-md">
-                    <span className="text-sm text-red-300">{errorMessage}</span>
+                    <span className="text-sm text-red-300">{importError}</span>
                 </div>
             )}
             <button onClick={handleTestDbConnection}>Test DB Connection</button>
@@ -219,11 +210,11 @@ const ImportBooks = ({ onImportComplete }) => {
             <button onClick={handleCheckSchema}>Check Schema</button>
             <button onClick={handleCheckConnection}>Check DB Connection</button>
             {userBooks.length > 0 && (
-                <div>
-                    <h3>User Books (first 100):</h3>
-                    <ul>
-                        {userBooks.slice(0, 20).map((book) => (
-                            <li key={book.id}>{book.title} by {book.author}</li>
+                <div className="mt-4">
+                    <h3 className="text-xl font-bold text-white mb-2">Your Imported Books</h3>
+                    <ul className="list-disc list-inside text-white">
+                        {userBooks.map((book, index) => (
+                            <li key={index}>{book.title} by {book.author}</li>
                         ))}
                     </ul>
                 </div>

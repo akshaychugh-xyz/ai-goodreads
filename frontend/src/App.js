@@ -4,31 +4,46 @@ import ImportBooks from './components/ImportBooks';
 import Recommendations from './components/Recommendations';
 import Login from './components/Login';
 import Register from './components/Register';
+import { api } from './api/api';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [shouldRefresh, setShouldRefresh] = useState(false);
+    const [hasImportedData, setHasImportedData] = useState(false);
     const [showLogin, setShowLogin] = useState(true);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
             setIsAuthenticated(true);
+            checkImportedData();
         }
     }, []);
 
+    const checkImportedData = async () => {
+        try {
+            const counts = await api.fetchShelfCounts();
+            setHasImportedData(Object.values(counts).some(count => count > 0));
+        } catch (error) {
+            console.error('Error checking imported data:', error);
+        }
+    };
+
     const handleLogin = () => {
         setIsAuthenticated(true);
+        checkImportedData();
     };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
         setIsAuthenticated(false);
+        setHasImportedData(false);
     };
 
     const handleImportComplete = () => {
         console.log('Import completed successfully');
         setShouldRefresh(true);
+        setHasImportedData(true);
     };
 
     return (
@@ -70,7 +85,7 @@ function App() {
                         <button onClick={handleLogout} className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
                             Logout
                         </button>
-                        <ImportBooks onImportComplete={handleImportComplete} />
+                        <ImportBooks onImportComplete={handleImportComplete} hasImportedData={hasImportedData} />
                         <Recommendations 
                             shouldRefresh={shouldRefresh} 
                             setShouldRefresh={setShouldRefresh}
