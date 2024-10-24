@@ -40,13 +40,15 @@ app.use(cookieParser());
 // Configure multer for file uploads
 const upload = multer({ dest: 'uploads/' });
 
-app.use('/api/auth', authRoutes);
+// Use the auth routes
+app.use('/auth', authRoutes);
+
 app.use('/api', verifyToken, protectedRoutes);
 app.use('/api', verifyToken, importRoutes);
 app.use('/api', verifyToken, recommendations);
 
 app.get('/', (req, res) => {
-  res.send('Welcome to the Book Recommendation Service');
+  res.send('Hello from BetterReads backend!');
 });
 
 app.post('/api/import-books', verifyToken, async (req, res) => {
