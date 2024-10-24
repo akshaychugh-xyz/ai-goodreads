@@ -4,6 +4,7 @@ export const API_URL = process.env.REACT_APP_API_URL || 'https://betterreads-bac
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
 });
 
 axiosInstance.interceptors.request.use(
@@ -61,23 +62,28 @@ export const api = {
   },
 
   login: async (credentials) => {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-      credentials: 'include',
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Login failed');
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Login failed');
+      }
+      const data = await response.json();
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      return data;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
-    const data = await response.json();
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-    }
-    return data;
   },
 
   register: async (userData) => {
