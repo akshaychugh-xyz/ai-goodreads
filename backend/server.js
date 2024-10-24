@@ -24,7 +24,7 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://betterreads-bice.vercel.app/'],
+  origin: ['http://localhost:3000', 'https://better-reads.akshaychugh.xyz/'],
   credentials: true,
 };
 
