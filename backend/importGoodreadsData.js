@@ -42,21 +42,27 @@ async function importBooks(filePath, userId) {
 							INSERT INTO books (isbn, title, author, user_id, average_rating, number_of_pages, exclusive_shelf)
 							VALUES ($1, $2, $3, $4, $5, $6, $7)
 							ON CONFLICT (user_id, isbn) DO NOTHING
-							RETURNING (xmax = 0) AS inserted
 						`;
-						const result = await client.query(query, [
-							book.isbn,
-							book.title,
-							book.author,
-							book.user_id,
-							book.average_rating,
-							book.number_of_pages,
-							book.exclusive_shelf
-						]);
-						if (result.rows[0].inserted) {
-							insertedCount++;
-						} else {
-							updatedCount++;
+						try {
+							const result = await client.query(query, [
+								book.isbn,
+								book.title,
+								book.author,
+								book.user_id,
+								book.average_rating,
+								book.number_of_pages,
+								book.exclusive_shelf
+							]);
+
+							// Check if a row was inserted
+							if (result.rowCount > 0) {
+								insertedCount++;
+							} else {
+								updatedCount++;
+							}
+						} catch (error) {
+							console.error('Error inserting book:', error);
+							console.error('Failed book details:', { isbn: book.isbn, title: book.title, author: book.author });
 						}
 					}
 					await client.query('COMMIT');
