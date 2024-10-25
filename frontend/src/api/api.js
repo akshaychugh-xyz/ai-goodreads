@@ -3,7 +3,7 @@ import axios from 'axios';
 export const API_URL = (process.env.REACT_APP_API_URL || 'https://betterreads-backend-23631affce1d.herokuapp.com') + '/api';
 
 const axiosInstance = axios.create({
-  baseURL: API_URL.replace('/api', ''), // Remove '/api' for axios instance
+  baseURL: API_URL, // Keep '/api' in the baseURL
   withCredentials: true,
 });
 
@@ -63,7 +63,6 @@ export const api = {
 
   login: async (credentials) => {
     try {
-      // Note: We're using API_URL.replace('/api', '') here to remove the '/api' prefix
       const response = await fetch(`${API_URL.replace('/api', '')}/auth/login`, {
         method: 'POST',
         headers: {
@@ -88,7 +87,6 @@ export const api = {
   },
 
   register: async (userData) => {
-    // Note: We're using API_URL.replace('/api', '') here to remove the '/api' prefix
     const response = await fetch(`${API_URL.replace('/api', '')}/auth/register`, {
       method: 'POST',
       headers: {
