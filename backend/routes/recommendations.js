@@ -65,7 +65,6 @@ router.get('/recommendations', verifyToken, async (req, res) => {
     const recommendations = [...toReadBooks, readBook].filter(Boolean);
 
     if (recommendations.length === 0) {
-      // If no recommendations found, return an empty array
       return res.json([]);
     }
 
@@ -125,5 +124,19 @@ async function fetchOpenLibraryData(isbn) {
         return { cover_url: null, subjects: [] };
     }
 }
+
+router.get('/book-count', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(
+      'SELECT COUNT(*) FROM books WHERE user_id = $1',
+      [userId]
+    );
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (error) {
+    console.error('Error fetching book count:', error);
+    res.status(500).json({ error: 'Failed to fetch book count' });
+  }
+});
 
 module.exports = router;
