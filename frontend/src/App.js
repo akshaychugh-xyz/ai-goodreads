@@ -5,6 +5,7 @@ import Recommendations from './components/Recommendations';
 import Login from './components/Login';
 import Register from './components/Register';
 import { api } from './api/api';
+import UserSummary from './components/UserSummary';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -47,8 +48,8 @@ function App() {
     };
 
     return (
-        <div className="App min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-800">
-            <div className="container mx-auto px-4 py-8 space-y-8">
+        <div className="App min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800">
+            <div className="container mx-auto px-6 py-12 space-y-12">
                 <HeaderWithValueProp />
                 {!isAuthenticated ? (
                     <div className="max-w-md mx-auto">
@@ -91,6 +92,7 @@ function App() {
                             setShouldRefresh={setShouldRefresh}
                             onImportComplete={handleImportComplete}
                         />
+                        <UserSummary />
                     </>
                 )}
             </div>

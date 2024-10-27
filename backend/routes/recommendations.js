@@ -6,6 +6,7 @@ const upload = multer({ dest: 'uploads/' });
 const { importGoodreadsData } = require('../importGoodreadsData');
 const axios = require('axios');
 const { verifyToken} = require('../auth');
+const { generateUserSummary } = require('../services/geminiService');
 
 // New route to fetch shelf counts
 router.get('/shelf-counts', verifyToken, async (req, res) => {
@@ -138,5 +139,77 @@ router.get('/book-count', verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch book count' });
   }
 });
+
+router.get('/user-summary', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Fetch user's reading data
+    const userData = await getUserReadingData(userId);
+    
+    // Generate summary using Gemini API
+    const summary = await generateUserSummary(userData);
+    
+    res.json({ summary });
+  } catch (error) {
+    console.error('Error generating user summary:', error);
+    res.status(500).json({ error: 'Error generating user summary' });
+  }
+});
+
+async function getUserReadingData(userId) {
+  const client = await pool.connect();
+  try {
+    console.log('Connected to database');
+    
+    // Fetch total books read
+    console.log('Fetching total books read');
+    const totalBooksResult = await client.query(
+      'SELECT COUNT(*) FROM books WHERE user_id = $1 AND exclusive_shelf = $2',
+      [userId, 'read']
+    );
+    const totalBooks = parseInt(totalBooksResult.rows[0].count);
+    console.log('Total books result:', totalBooks);
+
+    // Fetch top 3 authors
+    console.log('Fetching top authors');
+    const topAuthorsResult = await client.query(
+      'SELECT author, COUNT(*) FROM books WHERE user_id = $1 GROUP BY author ORDER BY COUNT(*) DESC LIMIT 3',
+      [userId]
+    );
+    const topAuthors = topAuthorsResult.rows.map(row => row.author);
+    console.log('Top authors:', topAuthors);
+
+    // Fetch longest book read
+    console.log('Fetching longest book');
+    const longestBookResult = await client.query(
+      'SELECT title, number_of_pages FROM books WHERE user_id = $1 AND exclusive_shelf = $2 ORDER BY number_of_pages DESC NULLS LAST LIMIT 1',
+      [userId, 'read']
+    );
+    const longestBook = longestBookResult.rows[0] || { title: 'N/A', number_of_pages: 0 };
+    console.log('Longest book:', longestBook);
+
+    // Fetch most read author
+    console.log('Fetching most read author');
+    const mostReadAuthorResult = await client.query(
+      'SELECT author, COUNT(*) FROM books WHERE user_id = $1 GROUP BY author ORDER BY COUNT(*) DESC LIMIT 1',
+      [userId]
+    );
+    const mostReadAuthor = mostReadAuthorResult.rows[0]?.author || 'N/A';
+    console.log('Most read author:', mostReadAuthor);
+
+    return {
+      totalBooks,
+      topAuthors,
+      longestBook,
+      mostReadAuthor
+    };
+  } catch (error) {
+    console.error('Error in getUserReadingData:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 module.exports = router;

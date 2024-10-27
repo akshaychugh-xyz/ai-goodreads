@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-export const API_URL = (process.env.REACT_APP_API_URL || 'https://betterreads-backend-23631affce1d.herokuapp.com') + '/api';
+export const API_URL = process.env.NODE_ENV === 'production'
+  ? 'https://betterreads-backend-23631affce1d.herokuapp.com/api'
+  : 'http://localhost:3001/api';
 
 const axiosInstance = axios.create({
   baseURL: API_URL, // Keep '/api' in the baseURL
@@ -277,6 +279,11 @@ export const api = {
       console.error('Error checking database connection:', error);
       throw error;
     }
+  },
+
+  getUserSummary: async () => {
+    const response = await axiosInstance.get('/user-summary');
+    return response.data;
   },
 };
 
