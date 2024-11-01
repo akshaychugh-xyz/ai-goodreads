@@ -9,7 +9,7 @@ const { initializeDatabase } = require('./db/database');
 const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protectedRoutes');
 const importRoutes = require('./routes/importRoutes');
-const recommendations = require('./routes/recommendations');
+const recommendationsRouter = require('./routes/recommendations');
 const { verifyToken } = require('./auth');
 const { importBooks } = require('./importGoodreadsData');
 const { getShelfCounts } = require('./shelfCounts');
@@ -54,12 +54,18 @@ app.use(cookieParser());
 // Configure multer for file uploads
 const upload = multer({ dest: 'uploads/' });
 
+// Log all incoming requests to debug routing
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
 // Use the auth routes
 app.use('/auth', authRoutes);
 
 app.use('/api', verifyToken, protectedRoutes);
 app.use('/api', verifyToken, importRoutes);
-app.use('/api', verifyToken, recommendations);
+app.use('/api', verifyToken, recommendationsRouter);
 
 app.get('/', (req, res) => {
   res.send('Hello from BetterReads backend!');

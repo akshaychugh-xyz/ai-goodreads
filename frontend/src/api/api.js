@@ -28,38 +28,52 @@ const getAuthHeader = () => {
 
 export const api = {
   getRecommendations: async () => {
-    const response = await fetch(`${API_URL}/recommendations`, {
-      headers: {
-        ...getAuthHeader(),
-      },
-    });
-    return response.json();
+    try {
+      console.log('Making recommendations API request');
+      const response = await fetch(`${API_URL}/recommendations`, {
+        headers: {
+          ...getAuthHeader(),
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('API response:', data);
+      return data;
+    } catch (error) {
+      console.error('API error:', error);
+      throw error;
+    }
   },
 
-  importBooks: async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
+  importBooks: async (formData) => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${API_URL}/import-books`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
+        const response = await fetch(`${API_URL}/import-books`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+            body: formData,
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Book import failed. Status:', response.status);
-        console.error('Error response:', errorText);
-        throw new Error(`Failed to import books: ${errorText}`);
-      }
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to import books');
+        }
 
-      return response.json();
+        const data = await response.json();
+        return {
+            message: data.message,
+            shelfCounts: data.shelfCounts,
+            importDetails: data.importDetails
+        };
     } catch (error) {
-      console.error('Error in importBooks:', error);
-      throw error;
+        console.error('Error in importBooks:', error);
+        throw error;
     }
   },
 
@@ -89,22 +103,31 @@ export const api = {
   },
 
   register: async (userData) => {
-    const response = await fetch(`${API_URL.replace('/api', '')}/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Registration failed');
+    try {
+      const response = await fetch(`${API_URL.replace('/api', '')}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Registration failed');
+      }
+
+      const data = await response.json();
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        return data;
+      } else {
+        throw new Error('No token received from server');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
     }
-    const data = await response.json();
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-    }
-    return data;
   },
 
   logout: () => {
@@ -284,6 +307,63 @@ export const api = {
   getUserSummary: async () => {
     const response = await axiosInstance.get('/user-summary');
     return response.data;
+  },
+
+  getLibraryStats: async () => {
+    try {
+      const response = await fetch(`${API_URL}/library-stats`, {
+        headers: {
+          ...getAuthHeader(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch library stats');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching library stats:', error);
+      throw error;
+    }
+  },
+
+  generateUserSummary: async () => {
+    try {
+      const response = await fetch(`${API_URL}/generate-summary`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate summary');
+      }
+      
+      const data = await response.json();
+      console.log('Summary response:', data);
+      return data;
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      throw error;
+    }
+  },
+
+  checkImportedBooks: async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`${API_URL}/check-imported-books`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to check imported books');
+      const data = await response.json();
+      return data.hasBooks;
+    } catch (error) {
+      console.error('Error checking imported books:', error);
+      return false;
+    }
   },
 };
 

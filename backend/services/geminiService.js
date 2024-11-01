@@ -12,8 +12,8 @@ async function generateUserSummary(userData) {
     Longest book read: "${userData.longestBook.title}" (${userData.longestBook.number_of_pages} pages)
     Most read author: ${userData.mostReadAuthor}
 
-    Please create a humorous, slightly sarcastic summary of this user's reading habits. 
-    Keep it light-hearted and entertaining, with a touch of playful mockery.
+    Please create a humorous, slightly sarcastic summary of this user's reading habits. Keep it in normal everyday english.
+    Keep it light-hearted and entertaining, with a touch of playful mockery. Make it funny, and sassy. Start by giving the user a unique character basis their book history. Make it sound as if the website is addressing the user.. 
   `;
 
   const result = await model.generateContent(prompt);

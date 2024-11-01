@@ -168,6 +168,23 @@ router.get('/check-connection', verifyToken, async (req, res) => {
   }
 });
 
+// Add this new route
+router.get('/check-imported-books', verifyToken, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT EXISTS(SELECT 1 FROM books WHERE user_id = $1)',
+            [req.user.id]
+        );
+        
+        res.json({ 
+            hasBooks: result.rows[0].exists 
+        });
+    } catch (error) {
+        console.error('Error checking imported books:', error);
+        res.status(500).json({ error: 'Failed to check imported books' });
+    }
+});
+
 // Add any other routes here
 // For example:
 // router.post('/some-route', verifyToken, upload.single('file'), (req, res) => {
