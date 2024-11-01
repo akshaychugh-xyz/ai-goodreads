@@ -32,15 +32,13 @@ fs.access(DATA_DIR, fs.constants.W_OK, (err) => {
   }
 });
 
-const allowedOrigins = [
-    'https://better-reads.akshaychugh.xyz',
-    'http://localhost:3000',
-    'https://betterreads-backend-23631affce1d.herokuapp.com'
-];
-
 const corsOptions = {
     origin: function (origin, callback) {
-        console.log('Request origin:', origin); // Debug log
+        const allowedOrigins = [
+            'https://better-reads.akshaychugh.xyz',
+            'http://localhost:3000',
+            'https://betterreads-backend-23631affce1d.herokuapp.com'
+        ];
         
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
@@ -48,16 +46,14 @@ const corsOptions = {
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            console.log('Blocked origin:', origin); // For debugging
-            // During development, you might want to allow all origins
-            callback(null, true); // temporarily allow all origins
-            // callback(new Error('Not allowed by CORS'));
+            console.log('Blocked origin:', origin);
+            callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
-    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+    optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));

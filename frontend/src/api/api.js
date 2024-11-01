@@ -26,6 +26,14 @@ const getAuthHeader = () => {
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
+const handleResponse = async (response) => {
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+};
+
 export const api = {
   getRecommendations: async () => {
     try {
@@ -36,13 +44,7 @@ export const api = {
         },
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('API response:', data);
-      return data;
+      return handleResponse(response);
     } catch (error) {
       console.error('API error:', error);
       throw error;
@@ -60,17 +62,7 @@ export const api = {
             body: formData,
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || 'Failed to import books');
-        }
-
-        const data = await response.json();
-        return {
-            message: data.message,
-            shelfCounts: data.shelfCounts,
-            importDetails: data.importDetails
-        };
+        return handleResponse(response);
     } catch (error) {
         console.error('Error in importBooks:', error);
         throw error;
@@ -87,18 +79,11 @@ export const api = {
         body: JSON.stringify(credentials),
         credentials: 'include',
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Login failed');
-      }
-      const data = await response.json();
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      return data;
+      
+      return handleResponse(response);
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
+      throw new Error(error.message || 'Login failed');
     }
   },
 
@@ -112,18 +97,7 @@ export const api = {
         body: JSON.stringify(userData),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Registration failed');
-      }
-
-      const data = await response.json();
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        return data;
-      } else {
-        throw new Error('No token received from server');
-      }
+      return handleResponse(response);
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
@@ -140,7 +114,7 @@ export const api = {
         ...getAuthHeader(),
       },
     });
-    return response.json();
+    return handleResponse(response);
   },
 
   getShelfCounts: async () => {
@@ -150,10 +124,7 @@ export const api = {
           ...getAuthHeader(),
         },
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch shelf counts');
-      }
-      return await response.json();
+      return handleResponse(response);
     } catch (error) {
       console.error('Error fetching shelf counts:', error);
       throw error;
@@ -191,14 +162,7 @@ export const api = {
             body: formData,
         });
         
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('CSV verification failed. Status:', response.status);
-            console.error('Error response:', errorText);
-            throw new Error(`Failed to verify CSV: ${errorText}`);
-        }
-        
-        return response.json();
+        return handleResponse(response);
     } catch (error) {
         console.error('Error in verifyGoodreadsCSV:', error);
         throw error;
@@ -316,10 +280,7 @@ export const api = {
           ...getAuthHeader(),
         },
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch library stats');
-      }
-      return await response.json();
+      return handleResponse(response);
     } catch (error) {
       console.error('Error fetching library stats:', error);
       throw error;
@@ -336,13 +297,7 @@ export const api = {
         }
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to generate summary');
-      }
-      
-      const data = await response.json();
-      console.log('Summary response:', data);
-      return data;
+      return handleResponse(response);
     } catch (error) {
       console.error('Error generating summary:', error);
       throw error;
