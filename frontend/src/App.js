@@ -10,6 +10,7 @@ import AuthBackground from './components/AuthBackground';
 import DisabledSectionOverlay from './components/DisabledSectionOverlay';
 import { ChevronDown } from 'lucide-react';
 import LoadingState from './components/LoadingState';
+import DemoBanner from './components/DemoBanner';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,6 +19,7 @@ function App() {
     const [showLogin, setShowLogin] = useState(true);
     const [importSectionExpanded, setImportSectionExpanded] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
+    const [isDemoMode, setIsDemoMode] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -74,6 +76,19 @@ function App() {
 
         checkExistingBooks();
     }, []);
+
+    const handleEnterDemoMode = () => {
+        setIsDemoMode(true);
+        setHasImportedData(true);
+        setImportSectionExpanded(false);
+    };
+
+    const handleExitDemoMode = () => {
+        setIsDemoMode(false);
+        setHasImportedData(false);
+        setImportSectionExpanded(true);
+        checkImportedData();
+    };
 
     if (!isAuthenticated) {
         return (
@@ -166,9 +181,18 @@ function App() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-paper to-cream">
+            {isDemoMode && <DemoBanner onExit={handleExitDemoMode} />}
             <div className="container mx-auto px-4 py-8">
                 <header className="mb-12 text-center relative">
-                    <div className="absolute right-0 top-0">
+                    <div className="absolute right-0 top-0 flex gap-2">
+                        {isDemoMode && (
+                            <button 
+                                onClick={handleExitDemoMode}
+                                className="px-4 py-2 bg-leather/10 text-leather hover:bg-leather/20 font-serif text-sm rounded-lg transition-colors"
+                            >
+                                Exit Demo Mode
+                            </button>
+                        )}
                         <button 
                             onClick={handleLogout}
                             className="px-4 py-2 bg-leather text-paper font-serif text-sm rounded-lg hover:bg-wood transition-colors"
@@ -185,7 +209,9 @@ function App() {
                 </header>
 
                 <main className="space-y-8 max-w-5xl mx-auto">
-                    <section className="bg-white/80 backdrop-blur-sm rounded-xl p-8 shadow-lg border border-wood/10">
+                    <section className={`bg-white/80 backdrop-blur-sm rounded-xl p-8 shadow-lg border border-wood/10 ${
+                        isDemoMode ? 'hidden' : ''
+                    }`}>
                         <div 
                             className="flex items-center justify-between cursor-pointer"
                             onClick={() => setImportSectionExpanded(!importSectionExpanded)}
@@ -215,20 +241,35 @@ function App() {
                                 onImportComplete={handleImportComplete} 
                                 hasImportedData={hasImportedData}
                                 importSectionExpanded={importSectionExpanded}
+                                onEnterDemoMode={handleEnterDemoMode}
+                                isDemoMode={isDemoMode}
                             />
                         </div>
                     </section>
 
+                    {!hasImportedData && !isDemoMode && (
+                        <div className="text-center">
+                            <button
+                                onClick={handleEnterDemoMode}
+                                className="px-6 py-3 bg-leather text-paper font-serif text-sm rounded-lg hover:bg-wood transition-colors inline-flex items-center gap-2"
+                            >
+                                <span className="text-lg">🎮</span>
+                                Try Demo Mode Instead
+                            </button>
+                        </div>
+                    )}
+
                     <section className={`bg-white/80 backdrop-blur-sm rounded-xl p-8 shadow-lg border border-wood/10 transition-all duration-300 ${
-                        !hasImportedData ? 'opacity-50' : ''
+                        !hasImportedData && !isDemoMode ? 'opacity-50' : ''
                     }`}>
                         <h2 className="font-display text-3xl text-ink mb-6">Your Recommendations</h2>
-                        {hasImportedData ? (
+                        {hasImportedData || isDemoMode ? (
                             <Recommendations 
                                 shouldRefresh={shouldRefresh} 
                                 setShouldRefresh={setShouldRefresh}
                                 onImportComplete={handleImportComplete}
                                 hasImportedData={hasImportedData}
+                                isDemoMode={isDemoMode}
                             />
                         ) : (
                             <DisabledSectionOverlay />

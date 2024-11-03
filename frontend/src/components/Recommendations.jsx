@@ -7,7 +7,7 @@ import { BookOpen, Quote } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete, hasImportedData }) => {
+const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete, hasImportedData, isDemoMode }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [recommendations, setRecommendations] = useState([]);
@@ -18,7 +18,7 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete, ha
         setLoading(true);
         try {
             console.log('Fetching recommendations...');
-            const response = await api.getRecommendations();
+            const response = await api.getRecommendations(isDemoMode);
             setRecommendations(response || []);
             setShouldRefresh(false);
         } catch (error) {
@@ -32,7 +32,7 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete, ha
     const generateSummary = async () => {
         setSummaryLoading(true);
         try {
-            const response = await api.generateUserSummary();
+            const response = await api.generateUserSummary(isDemoMode);
             setSummary(response.summary);
         } catch (error) {
             console.error('Error generating summary:', error);
@@ -111,7 +111,7 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete, ha
             </Card>
 
             {/* Library Overview Section */}
-            <LibraryOverview />
+            <LibraryOverview isDemoMode={isDemoMode} />
 
             {/* Book Recommendations Section */}
             <Card className="bg-cream/30">

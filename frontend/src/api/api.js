@@ -15,6 +15,12 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    if (config.isDemoMode) {
+      config.params = {
+        ...config.params,
+        isDemoMode: true
+      };
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -22,7 +28,6 @@ axiosInstance.interceptors.request.use(
 
 const getAuthHeader = () => {
   const token = localStorage.getItem('token');
-  console.log('Retrieved token:', token);
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
@@ -35,13 +40,11 @@ const handleResponse = async (response) => {
 };
 
 export const api = {
-  getRecommendations: async () => {
+  getRecommendations: async (isDemoMode = false) => {
     try {
       console.log('Making recommendations API request');
-      const response = await fetch(`${API_URL}/recommendations`, {
-        headers: {
-          ...getAuthHeader(),
-        },
+      const response = await fetch(`${API_URL}/recommendations${isDemoMode ? '?isDemoMode=true' : ''}`, {
+        headers: getAuthHeader(),
       });
       
       return handleResponse(response);
@@ -139,10 +142,10 @@ export const api = {
     return response.data;
   },
 
-  fetchShelfCounts: async () => {
+  fetchShelfCounts: async (isDemoMode = false) => {
     console.log('Making API call to fetch shelf counts...');
-    const response = await axiosInstance.get(`/shelf-counts?_=${Date.now()}`, {
-      headers: getAuthHeader(),
+    const response = await axiosInstance.get(`/shelf-counts${isDemoMode ? '?isDemoMode=true' : ''}`, {
+      headers: getAuthHeader()
     });
     console.log('API response for shelf counts:', response.data);
     return response.data;
@@ -273,23 +276,24 @@ export const api = {
     return response.data;
   },
 
-  getLibraryStats: async () => {
+  getLibraryStats: async (isDemoMode = false) => {
     try {
-      const response = await fetch(`${API_URL}/library-stats`, {
-        headers: {
-          ...getAuthHeader(),
-        },
-      });
-      return handleResponse(response);
+        console.log('Making library stats API call with demo mode:', isDemoMode);
+        const response = await fetch(`${API_URL}/library-stats${isDemoMode ? '?isDemoMode=true' : ''}`, {
+            headers: getAuthHeader(),
+        });
+        const data = await handleResponse(response);
+        console.log('Library stats API response:', data);
+        return data;
     } catch (error) {
-      console.error('Error fetching library stats:', error);
-      throw error;
+        console.error('Error fetching library stats:', error);
+        throw error;
     }
   },
 
-  generateUserSummary: async () => {
+  generateUserSummary: async (isDemoMode = false) => {
     try {
-      const response = await fetch(`${API_URL}/generate-summary`, {
+      const response = await fetch(`${API_URL}/generate-summary${isDemoMode ? '?isDemoMode=true' : ''}`, {
         method: 'POST',
         headers: {
           ...getAuthHeader(),

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { api } from '../api/api';
 
-const ImportBooks = ({ onImportComplete, hasImportedData, importSectionExpanded }) => {
+const ImportBooks = ({ onImportComplete, hasImportedData, importSectionExpanded, onEnterDemoMode, isDemoMode }) => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -114,6 +114,8 @@ const ImportBooks = ({ onImportComplete, hasImportedData, importSectionExpanded 
                     </div>
                 </div>
             </div>
+
+            
         </div>
     );
 };

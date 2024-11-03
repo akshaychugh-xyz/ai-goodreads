@@ -4,7 +4,8 @@ import { api } from '../api/api';
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { ScrollArea } from "./ui/scroll-area";
 
-const LibraryOverview = () => {
+const LibraryOverview = ({ isDemoMode }) => {
+  console.log('LibraryOverview - isDemoMode:', isDemoMode);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,18 +19,30 @@ const LibraryOverview = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const data = await api.getLibraryStats();
-        console.log('Fetched stats:', data);
-        setStats(data);
+        console.log('Fetching library stats with demo mode:', isDemoMode);
+        const data = await api.getLibraryStats(isDemoMode);
+        console.log('Fetched library stats:', data);
+        setStats({
+          shelfDistribution: data.shelfDistribution || [],
+          topRatedBooks: data.topRatedBooks || [],
+          personalityTags: data.personalityTags || [],
+          topAuthor: data.topAuthor || null,
+          readingStats: data.readingStats || {
+            avg_length: 0,
+            longest_book: 0,
+            books_read: 0
+          }
+        });
       } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.error('Error fetching library stats:', error);
+        setError('Failed to load library stats');
       } finally {
         setLoading(false);
       }
     };
 
     fetchStats();
-  }, []);
+  }, [isDemoMode]);
 
   if (loading) {
     return <div className="text-wood">Loading your library stats...</div>;
@@ -39,11 +52,11 @@ const LibraryOverview = () => {
     return <div className="text-red-500">{error}</div>;
   }
 
-  // Prepare pie chart data
+  // Prepare pie chart data with null checks
   const pieData = {
-    labels: stats?.shelfDistribution.map(shelf => shelf.exclusive_shelf) || [],
+    labels: stats?.shelfDistribution?.map(shelf => shelf.exclusive_shelf) || [],
     datasets: [{
-      data: stats?.shelfDistribution.map(shelf => shelf.count) || [],
+      data: stats?.shelfDistribution?.map(shelf => shelf.count) || [],
       backgroundColor: ['#8B7355', '#A87D5F', '#8E354A'],
       borderColor: '#FFF8E7',
       borderWidth: 2,
@@ -79,12 +92,19 @@ const LibraryOverview = () => {
           {/* Top 3 Personality Tags */}
           <div className="space-y-3">
             <h3 className="font-display text-lg text-ink mb-4">Top Reader Traits</h3>
-            {stats?.personalityTags.slice(0, 3).map((tag, i) => (
-              <div key={i} className="bg-cream/50 p-3 rounded-lg">
-                <div className="font-serif text-lg text-wood">{tag.label}</div>
-                <div className="text-sm text-wood/70">{tag.description}</div>
+            {stats?.personalityTags && stats.personalityTags.length > 0 ? (
+              stats.personalityTags.slice(0, 3).map((tag, i) => (
+                <div key={i} className="bg-cream/50 p-3 rounded-lg">
+                  <div className="font-serif text-lg text-wood">{tag.label}</div>
+                  <div className="text-sm text-wood/70">{tag.description}</div>
+                </div>
+              ))
+            ) : (
+              <div className="bg-cream/50 p-3 rounded-lg">
+                <div className="font-serif text-lg text-wood">Still Analyzing...</div>
+                <div className="text-sm text-wood/70">Import more books to reveal your reading traits!</div>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -94,8 +114,8 @@ const LibraryOverview = () => {
           <div>
             <h3 className="text-sm text-wood/60 uppercase mb-2">Most Read Author</h3>
             <div className="font-serif text-xl text-wood">
-              {stats?.topAuthor?.author}
-              <div className="text-sm text-wood/70">{stats?.topAuthor?.book_count} books read</div>
+              {stats?.topAuthor?.author || 'No data'}
+              <div className="text-sm text-wood/70">{stats?.topAuthor?.book_count || 0} books read</div>
             </div>
           </div>
 
@@ -103,7 +123,7 @@ const LibraryOverview = () => {
           <div>
             <h3 className="text-sm text-wood/60 uppercase mb-2">Your Highest Rated</h3>
             <div className="space-y-2">
-              {stats?.topRatedBooks.map((book, i) => (
+              {(stats?.topRatedBooks || []).map((book, i) => (
                 <div key={i}>
                   <div className="font-serif text-wood">{book.title}</div>
                   <div className="text-sm text-wood/70">{book.author} • {book.my_rating}★</div>
