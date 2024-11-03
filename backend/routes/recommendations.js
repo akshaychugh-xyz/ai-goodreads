@@ -91,11 +91,18 @@ function generatePersonalityTags(shelfCounts, readingStats, topAuthor, topRatedB
   return tags;
 }
 
+// Helper function to get the correct user ID
+const getUserId = (req) => {
+    const isDemoMode = req.query.isDemoMode === 'true';
+    return isDemoMode ? 1 : req.user.id;
+};
+
 // New route to fetch shelf counts
 router.get('/shelf-counts', verifyToken, async (req, res) => {
   try {
-    console.log('Fetching shelf counts for user:', req.user.id);
-    const userId = req.user.id;
+    const userId = getUserId(req);
+    console.log('Fetching shelf counts for user:', userId);
+    
     const result = await pool.query(
       `SELECT exclusive_shelf, COUNT(*) 
        FROM books 
@@ -112,7 +119,6 @@ router.get('/shelf-counts', verifyToken, async (req, res) => {
     }, {});
     
     if (Object.keys(shelfCounts).length === 0) {
-      // If no books found, return default values
       shelfCounts['read'] = 0;
       shelfCounts['currently-reading'] = 0;
       shelfCounts['to-read'] = 0;
@@ -129,11 +135,12 @@ router.get('/shelf-counts', verifyToken, async (req, res) => {
 // Modify the existing recommendations route to include number of pages
 router.get('/recommendations', verifyToken, async (req, res) => {
   try {
-    console.log('Fetching recommendations for user:', req.user.id);
+    const userId = getUserId(req);
+    console.log('Fetching recommendations for user:', userId);
     
     const toReadBooksResult = await pool.query(
       'SELECT * FROM books WHERE user_id = $1 AND exclusive_shelf = $2 ORDER BY RANDOM() LIMIT 3',
-      [req.user.id, 'to-read']
+      [userId, 'to-read']
     );
     
     const toReadBooks = toReadBooksResult.rows;
@@ -141,7 +148,7 @@ router.get('/recommendations', verifyToken, async (req, res) => {
 
     const readBookResult = await pool.query(
       "SELECT * FROM books WHERE user_id = $1 AND exclusive_shelf = 'read' ORDER BY RANDOM() LIMIT 1",
-      [req.user.id]
+      [userId]
     );
     const readBook = readBookResult.rows[0];
     console.log('Read book:', readBook);
@@ -297,117 +304,105 @@ async function getUserReadingData(userId) {
 
 // Add this new endpoint alongside existing routes
 router.get('/library-stats', verifyToken, async (req, res) => {
-  console.log('Library stats endpoint hit');
-  console.log('User ID:', req.user.id);
-  
-  const userId = req.user.id;
-  
-  try {
-    // 1. Get shelf distribution
-    const shelfCounts = await pool.query(`
-      SELECT exclusive_shelf, COUNT(*) as count
-      FROM books 
-      WHERE user_id = $1 AND exclusive_shelf IS NOT NULL
-      GROUP BY exclusive_shelf
-    `, [userId]);
+    try {
+        const userId = getUserId(req);
+        console.log('Fetching library stats for user:', userId, 'Demo mode:', req.query.isDemoMode);
 
-    // 2. Get most read author
-    const topAuthor = await pool.query(`
-      SELECT author, COUNT(*) as book_count
-      FROM books
-      WHERE user_id = $1 
-        AND author IS NOT NULL
-        AND exclusive_shelf = 'read'
-      GROUP BY author
-      ORDER BY book_count DESC
-      LIMIT 1
-    `, [userId]);
+        // Get shelf distribution
+        const shelfResult = await pool.query(`
+            SELECT exclusive_shelf, COUNT(*) 
+            FROM books 
+            WHERE user_id = $1 
+            GROUP BY exclusive_shelf`,
+            [userId]
+        );
 
-    // 3. Get top rated books
-    const topRatedBooks = await pool.query(`
-      SELECT title, author, my_rating, number_of_pages
-      FROM books
-      WHERE user_id = $1 
-        AND my_rating IS NOT NULL 
-        AND title IS NOT NULL
-      ORDER BY my_rating DESC, date_read DESC
-      LIMIT 3
-    `, [userId]);
+        // Get top rated books
+        const topBooksResult = await pool.query(`
+            SELECT title, author, my_rating 
+            FROM books 
+            WHERE user_id = $1 
+                AND my_rating IS NOT NULL 
+            ORDER BY my_rating DESC 
+            LIMIT 3`,
+            [userId]
+        );
 
-    // 4. Get reading statistics
-    const readingStats = await pool.query(`
-      SELECT 
-        ROUND(AVG(number_of_pages)) as avg_length,
-        MAX(number_of_pages) as longest_book,
-        TO_CHAR(date_read, 'YYYY-MM') as month,
-        COUNT(*) as books_read
-      FROM books
-      WHERE user_id = $1 
-        AND date_read IS NOT NULL 
-        AND number_of_pages IS NOT NULL
-        AND exclusive_shelf = 'read'
-      GROUP BY TO_CHAR(date_read, 'YYYY-MM')
-      ORDER BY books_read DESC
-      LIMIT 1
-    `, [userId]);
+        // Get top author
+        const topAuthorResult = await pool.query(`
+            SELECT author, COUNT(*) as book_count
+            FROM books
+            WHERE user_id = $1
+            GROUP BY author
+            ORDER BY book_count DESC
+            LIMIT 1`,
+            [userId]
+        );
 
-    // Add personality tags to the response
-    const personalityTags = generatePersonalityTags(
-      shelfCounts.rows, 
-      readingStats.rows[0],
-      topAuthor.rows[0],
-      topRatedBooks.rows
-    );
+        // Get reading stats
+        const readingStatsResult = await pool.query(`
+            SELECT 
+                ROUND(AVG(number_of_pages)) as avg_length,
+                MAX(number_of_pages) as longest_book,
+                COUNT(*) as books_read
+            FROM books
+            WHERE user_id = $1 AND exclusive_shelf = 'read'`,
+            [userId]
+        );
 
-    res.json({
-      shelfDistribution: shelfCounts.rows,
-      topAuthor: topAuthor.rows[0],
-      topRatedBooks: topRatedBooks.rows,
-      readingStats: readingStats.rows[0],
-      personalityTags
-    });
+        const stats = {
+            shelfDistribution: shelfResult.rows,
+            topRatedBooks: topBooksResult.rows,
+            topAuthor: topAuthorResult.rows[0] || null,
+            readingStats: readingStatsResult.rows[0] || {
+                avg_length: 0,
+                longest_book: 0,
+                books_read: 0
+            }
+        };
 
-  } catch (error) {
-    console.error('Error fetching library stats:', error);
-    res.status(500).json({ error: 'Failed to fetch library stats' });
-  }
+        // Generate personality tags
+        const personalityTags = generatePersonalityTags(
+            shelfResult.rows,
+            stats.readingStats,
+            stats.topAuthor,
+            stats.topRatedBooks
+        );
+
+        // Include personality tags in the response
+        stats.personalityTags = personalityTags;
+
+        console.log('Sending library stats:', stats);
+        res.json(stats);
+    } catch (error) {
+        console.error('Error fetching library stats:', error);
+        res.status(500).json({ error: 'Failed to fetch library stats' });
+    }
 });
 
 router.post('/generate-summary', verifyToken, async (req, res) => {
-  console.log('Generate summary endpoint hit');
   try {
-    const userId = req.user.id;
-    console.log('User ID:', userId);
-
-    // Get user's reading data
-    const readingData = await pool.query(`
+    const userId = getUserId(req);
+    
+    // Fetch user's reading data
+    const statsResult = await pool.query(`
       SELECT 
-        title,
-        author,
-        number_of_pages,
-        exclusive_shelf
+        COUNT(*) as total_books,
+        AVG(number_of_pages) as avg_length,
+        MAX(number_of_pages) as longest_book
       FROM books 
-      WHERE user_id = $1
+      WHERE user_id = $1 AND exclusive_shelf = 'read'
     `, [userId]);
-
-    // Get most read author
-    const authorQuery = await pool.query(`
-      SELECT author, COUNT(*) as book_count
-      FROM books
-      WHERE user_id = $1 AND author IS NOT NULL
-      GROUP BY author
-      ORDER BY book_count DESC
-      LIMIT 3
-    `, [userId]);
-
+    
     // Prepare data for Gemini
     const userData = {
-      totalBooks: readingData.rows.length,
-      topAuthors: authorQuery.rows.map(a => a.author),
-      mostReadAuthor: authorQuery.rows[0]?.author || 'None',
-      longestBook: readingData.rows.reduce((max, book) => 
-        (!max || book.number_of_pages > max.number_of_pages) ? book : max
-      , null) || { title: 'None', number_of_pages: 0 }
+      totalBooks: statsResult.rows[0].total_books,
+      topAuthors: [],
+      mostReadAuthor: 'None',
+      longestBook: {
+        title: statsResult.rows[0].longest_book,
+        number_of_pages: statsResult.rows[0].longest_book
+      }
     };
 
     const summary = await generateUserSummary(userData);
@@ -416,8 +411,8 @@ router.post('/generate-summary', verifyToken, async (req, res) => {
     res.json({ summary });
 
   } catch (error) {
-    console.error('Backend error generating summary:', error);
-    res.status(500).json({ error: 'Failed to generate summary, please try again' });
+    console.error('Error generating summary:', error);
+    res.status(500).json({ error: 'Failed to generate summary' });
   }
 });
 
