@@ -115,7 +115,7 @@ const LibraryOverview = ({ isDemoMode }) => {
             <h3 className="text-sm text-wood/60 uppercase mb-2">Most Read Author</h3>
             <div className="font-serif text-xl text-wood">
               {stats?.topAuthor?.author || 'No data'}
-              <div className="text-sm text-wood/70">{stats?.topAuthor?.book_count || 0} books read</div>
+              <div className="text-sm text-wood/70">{stats?.topAuthor?.read_count || 0} books read</div>
             </div>
           </div>
 

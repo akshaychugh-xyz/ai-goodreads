@@ -281,11 +281,7 @@ async function getUserReadingData(userId) {
 
     // Fetch most read author
     console.log('Fetching most read author');
-    const mostReadAuthorResult = await client.query(
-      'SELECT author, COUNT(*) FROM books WHERE user_id = $1 GROUP BY author ORDER BY COUNT(*) DESC LIMIT 1',
-      [userId]
-    );
-    const mostReadAuthor = mostReadAuthorResult.rows[0]?.author || 'N/A';
+    const mostReadAuthor = await getMostReadAuthor(userId);
     console.log('Most read author:', mostReadAuthor);
 
     return {
@@ -301,6 +297,27 @@ async function getUserReadingData(userId) {
     client.release();
   }
 }
+
+const getMostReadAuthor = async (userId) => {
+  const result = await pool.query(`
+    SELECT 
+      author,
+      COUNT(*) as read_count
+    FROM books 
+    WHERE user_id = $1
+      AND exclusive_shelf = 'read'
+      AND author IS NOT NULL 
+      AND author != ''
+    GROUP BY author
+    ORDER BY read_count DESC
+    LIMIT 1
+  `, [userId]);
+  
+  return {
+    name: result.rows[0]?.author || 'None',
+    count: parseInt(result.rows[0]?.read_count) || 0
+  };
+};
 
 // Add this new endpoint alongside existing routes
 router.get('/library-stats', verifyToken, async (req, res) => {
@@ -330,11 +347,16 @@ router.get('/library-stats', verifyToken, async (req, res) => {
 
         // Get top author
         const topAuthorResult = await pool.query(`
-            SELECT author, COUNT(*) as book_count
+            SELECT 
+                author,
+                COUNT(*) as book_count,
+                SUM(CASE WHEN exclusive_shelf = 'read' THEN 1 ELSE 0 END) as read_count
             FROM books
             WHERE user_id = $1
+                AND author IS NOT NULL
+                AND author != ''
             GROUP BY author
-            ORDER BY book_count DESC
+            ORDER BY read_count DESC, book_count DESC
             LIMIT 1`,
             [userId]
         );
@@ -384,32 +406,14 @@ router.post('/generate-summary', verifyToken, async (req, res) => {
   try {
     const userId = getUserId(req);
     
-    // Fetch user's reading data
-    const statsResult = await pool.query(`
-      SELECT 
-        COUNT(*) as total_books,
-        AVG(number_of_pages) as avg_length,
-        MAX(number_of_pages) as longest_book
-      FROM books 
-      WHERE user_id = $1 AND exclusive_shelf = 'read'
-    `, [userId]);
+    // Use the existing comprehensive function to get user data
+    const userData = await getUserReadingData(userId);
     
-    // Prepare data for Gemini
-    const userData = {
-      totalBooks: statsResult.rows[0].total_books,
-      topAuthors: [],
-      mostReadAuthor: 'None',
-      longestBook: {
-        title: statsResult.rows[0].longest_book,
-        number_of_pages: statsResult.rows[0].longest_book
-      }
-    };
-
+    // Generate summary using Gemini API
     const summary = await generateUserSummary(userData);
-    console.log('Generated summary:', summary);
+    console.log('Generated summary with data:', userData);
     
     res.json({ summary });
-
   } catch (error) {
     console.error('Error generating summary:', error);
     res.status(500).json({ error: 'Failed to generate summary' });

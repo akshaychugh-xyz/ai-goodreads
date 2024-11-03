@@ -18,9 +18,12 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete, ha
         setLoading(true);
         try {
             console.log('Fetching recommendations...');
+            const scrollPosition = window.scrollY;  // Store current scroll position
             const response = await api.getRecommendations(isDemoMode);
             setRecommendations(response || []);
             setShouldRefresh(false);
+            // Restore scroll position after state update
+            setTimeout(() => window.scrollTo(0, scrollPosition), 0);
         } catch (error) {
             console.error('Error fetching recommendations:', error);
             setError('Failed to load recommendations');
@@ -179,3 +182,4 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete, ha
 }
 
 export default Recommendations;
+
