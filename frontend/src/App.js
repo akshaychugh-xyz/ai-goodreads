@@ -108,10 +108,10 @@ function App() {
                     <div className="container mx-auto px-4 py-8">
                         <header className="mb-12 text-center fade-in-up">
                             <h1 className="font-display text-5xl text-ink mb-4">
-                                Find your next favorite book
+                                Turn Your Endless Reading List into Your Next Great Read!
                             </h1>
                             <p className="font-serif text-wood text-xl max-w-2xl mx-auto">
-                                Just something fun using your never-ending Goodreads library!
+                                Smart recommendations from your existing Goodreads library - so you actually read the books you save
                             </p>
                         </header>
 
