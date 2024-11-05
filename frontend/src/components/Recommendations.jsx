@@ -123,7 +123,7 @@ const Recommendations = ({ shouldRefresh, setShouldRefresh, onImportComplete, ha
                 </CardHeader>
                 <CardContent>
                     {/* Grid of recommendation cards */}
-                    <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
                         {recommendations.map((book) => (
                             <a 
                                 key={book.book_id} 

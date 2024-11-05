@@ -83,7 +83,7 @@ const LibraryOverview = ({ isDemoMode }) => {
         </div>
 
         {/* Middle Section - Chart and Top 3 Tags */}
-        <div className="grid grid-cols-2 gap-8 mb-8 border-b border-wood/10 pb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 border-b border-wood/10 pb-6">
           {/* Pie Chart */}
           <div className="h-64">
             <Pie data={pieData} options={{ maintainAspectRatio: false }} />
@@ -109,7 +109,7 @@ const LibraryOverview = ({ isDemoMode }) => {
         </div>
 
         {/* Bottom Section - Reading Insights */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           {/* Most Read Author */}
           <div>
             <h3 className="text-sm text-wood/60 uppercase mb-2">Most Read Author</h3>

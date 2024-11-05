@@ -105,9 +105,9 @@ function App() {
             <div className="min-h-screen relative">
                 <AuthBackground />
                 <div className="relative z-10">
-                    <div className="container mx-auto px-4 py-8">
+                    <div className="container mx-auto px-4 py-4 sm:py-8">
                         <header className="mb-12 text-center fade-in-up">
-                            <h1 className="font-display text-5xl text-ink mb-4">
+                            <h1 className="font-display text-3xl sm:text-5xl text-ink mb-4">
                                 Turn Your Endless Reading List into Your Next Great Read!
                             </h1>
                             <p className="font-serif text-wood text-xl max-w-2xl mx-auto">
@@ -115,7 +115,7 @@ function App() {
                             </p>
                         </header>
 
-                        <main className="max-w-md mx-auto">
+                        <main className="max-w-md mx-auto px-4 sm:px-0">
                             <div className="relative">
                                 <div className={`fade-in-up transition-all duration-300 ${
                                     showLogin ? 'opacity-100 visible' : 'opacity-0 invisible absolute inset-0'
@@ -214,7 +214,7 @@ function App() {
                 {isDemoMode && <DemoBanner onExit={handleExitDemoMode} isAuthenticated={isAuthenticated} />}
                 <div className="container mx-auto px-4 py-8">
                     <header className="mb-12 text-center relative">
-                        <div className="absolute right-0 top-0 flex gap-2">
+                        <div className="absolute right-4 top-4 sm:right-0 sm:top-0 z-10 flex gap-2">
                             {isDemoMode && (
                                 <button 
                                     onClick={handleExitDemoMode}
@@ -242,12 +242,14 @@ function App() {
                                 </button>
                             )}
                         </div>
-                        <h1 className="font-display text-5xl text-ink mb-4">
-                            Find your next favorite book
-                        </h1>
-                        <p className="font-serif text-wood text-xl max-w-2xl mx-auto">
-                            Just something fun using your never-ending Goodreads library!
-                        </p>
+                        <div className="pt-16 sm:pt-0">
+                            <h1 className="font-display text-3xl sm:text-5xl text-ink mb-4">
+                                Find your next favorite book
+                            </h1>
+                            <p className="font-serif text-wood text-xl max-w-2xl mx-auto">
+                                Just something fun using your never-ending Goodreads library!
+                            </p>
+                        </div>
                     </header>
 
                     <main className="space-y-8 max-w-5xl mx-auto">
