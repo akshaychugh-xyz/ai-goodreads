@@ -11,22 +11,23 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config) => {
+    const isDemoMode = config.isDemoMode || config.params?.isDemoMode;
+    if (isDemoMode) {
+      config.params = { ...config.params, isDemoMode: true };
+      return config;
+    }
+    
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    if (config.isDemoMode) {
-      config.params = {
-        ...config.params,
-        isDemoMode: true
-      };
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-const getAuthHeader = () => {
+const getAuthHeader = (isDemoMode = false) => {
+  if (isDemoMode) return {};
   const token = localStorage.getItem('token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
@@ -43,11 +44,10 @@ export const api = {
   getRecommendations: async (isDemoMode = false) => {
     try {
       console.log('Making recommendations API request');
-      const response = await fetch(`${API_URL}/recommendations${isDemoMode ? '?isDemoMode=true' : ''}`, {
-        headers: getAuthHeader(),
+      const response = await axiosInstance.get('/recommendations', {
+        params: { isDemoMode }
       });
-      
-      return handleResponse(response);
+      return response.data;
     } catch (error) {
       console.error('API error:', error);
       throw error;
@@ -120,12 +120,10 @@ export const api = {
     return handleResponse(response);
   },
 
-  getShelfCounts: async () => {
+  getShelfCounts: async (isDemoMode = false) => {
     try {
-      const response = await fetch(`${API_URL}/shelf-counts`, {
-        headers: {
-          ...getAuthHeader(),
-        },
+      const response = await fetch(`${API_URL}/shelf-counts${isDemoMode ? '?isDemoMode=true' : ''}`, {
+        headers: getAuthHeader(isDemoMode),
       });
       return handleResponse(response);
     } catch (error) {
@@ -135,9 +133,10 @@ export const api = {
   },
 
   // Merged functions from the second file
-  fetchRecommendations: async () => {
+  fetchRecommendations: async (isDemoMode = false) => {
     const response = await axiosInstance.get('/recommendations', {
-      headers: getAuthHeader(),
+      headers: getAuthHeader(isDemoMode),
+      isDemoMode
     });
     return response.data;
   },
@@ -278,16 +277,15 @@ export const api = {
 
   getLibraryStats: async (isDemoMode = false) => {
     try {
-        console.log('Making library stats API call with demo mode:', isDemoMode);
-        const response = await fetch(`${API_URL}/library-stats${isDemoMode ? '?isDemoMode=true' : ''}`, {
-            headers: getAuthHeader(),
-        });
-        const data = await handleResponse(response);
-        console.log('Library stats API response:', data);
-        return data;
+      console.log('Making library stats API call with demo mode:', isDemoMode);
+      const response = await axiosInstance.get('/library-stats', {
+        params: { isDemoMode }
+      });
+      console.log('Library stats API response:', response.data);
+      return response.data;
     } catch (error) {
-        console.error('Error fetching library stats:', error);
-        throw error;
+      console.error('Error fetching library stats:', error);
+      throw error;
     }
   },
 
@@ -296,7 +294,7 @@ export const api = {
       const response = await fetch(`${API_URL}/generate-summary${isDemoMode ? '?isDemoMode=true' : ''}`, {
         method: 'POST',
         headers: {
-          ...getAuthHeader(),
+          ...getAuthHeader(isDemoMode),
           'Content-Type': 'application/json'
         }
       });
@@ -308,17 +306,16 @@ export const api = {
     }
   },
 
-  checkImportedBooks: async () => {
-    const token = localStorage.getItem('token');
+  checkImportedBooks: async (isDemoMode = false) => {
+    if (isDemoMode) {
+      return true;
+    }
+    
     try {
-      const response = await fetch(`${API_URL}/check-imported-books`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await axiosInstance.get('/check-imported-books', {
+        params: { isDemoMode }
       });
-      if (!response.ok) throw new Error('Failed to check imported books');
-      const data = await response.json();
-      return data.hasBooks;
+      return response.data.hasBooks;
     } catch (error) {
       console.error('Error checking imported books:', error);
       return false;

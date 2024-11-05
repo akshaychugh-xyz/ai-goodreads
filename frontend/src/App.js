@@ -62,9 +62,9 @@ function App() {
     useEffect(() => {
         const checkExistingBooks = async () => {
             try {
-                const hasBooks = await api.checkImportedBooks();
-                setHasImportedData(hasBooks);
-                if (hasBooks) {
+                const hasBooks = await api.checkImportedBooks(isDemoMode);
+                if (hasBooks || isDemoMode) {
+                    setHasImportedData(true);
                     setImportSectionExpanded(false);
                 }
             } catch (error) {
@@ -75,12 +75,22 @@ function App() {
         };
 
         checkExistingBooks();
-    }, []);
+    }, [isDemoMode]);
 
-    const handleEnterDemoMode = () => {
+    const handleEnterDemoMode = async () => {
         setIsDemoMode(true);
         setHasImportedData(true);
         setImportSectionExpanded(false);
+        setShowLogin(false);
+        try {
+            await Promise.all([
+                api.getLibraryStats(true),
+                api.getRecommendations(true)
+            ]);
+            setIsLoading(false);
+        } catch (error) {
+            console.error('Error loading demo data:', error);
+        }
     };
 
     const handleExitDemoMode = () => {
@@ -90,7 +100,7 @@ function App() {
         checkImportedData();
     };
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isDemoMode) {
         return (
             <div className="min-h-screen relative">
                 <AuthBackground />
@@ -124,15 +134,24 @@ function App() {
                                                 <span className="px-4 bg-white/80 text-sm font-serif text-wood">or</span>
                                             </div>
                                         </div>
-                                        <p className="text-center font-serif text-wood">
-                                            Don't have an account?{' '}
-                                            <button 
-                                                onClick={() => setShowLogin(false)}
-                                                className="text-leather hover:text-wood transition-colors font-medium"
+                                        <div className="text-center space-y-4">
+                                            <button
+                                                onClick={handleEnterDemoMode}
+                                                className="px-6 py-3 bg-leather/10 text-leather hover:bg-leather/20 font-serif text-sm rounded-lg transition-colors inline-flex items-center gap-2"
                                             >
-                                                Create one here
+                                                <span className="text-lg">🎮</span>
+                                                Try Demo Mode
                                             </button>
-                                        </p>
+                                            <div>
+                                                <span className="text-wood">Don't have an account? </span>
+                                                <button
+                                                    onClick={() => setShowLogin(false)}
+                                                    className="text-leather hover:text-wood transition-colors font-medium"
+                                                >
+                                                    Create one here
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 
@@ -156,15 +175,24 @@ function App() {
                                                 <span className="px-4 bg-white/80 text-sm font-serif text-wood">or</span>
                                             </div>
                                         </div>
-                                        <p className="text-center font-serif text-wood">
-                                            Already have an account?{' '}
-                                            <button 
-                                                onClick={() => setShowLogin(true)}
-                                                className="text-leather hover:text-wood transition-colors font-medium"
+                                        <div className="text-center space-y-4">
+                                            <button
+                                                onClick={handleEnterDemoMode}
+                                                className="px-6 py-3 bg-leather/10 text-leather hover:bg-leather/20 font-serif text-sm rounded-lg transition-colors inline-flex items-center gap-2"
                                             >
-                                                Sign in here
+                                                <span className="text-lg">🎮</span>
+                                                Try Demo Mode
                                             </button>
-                                        </p>
+                                            <div>
+                                                <span className="text-wood">Already have an account? </span>
+                                                <button
+                                                    onClick={() => setShowLogin(true)}
+                                                    className="text-leather hover:underline font-serif"
+                                                >
+                                                    Sign in here
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -183,7 +211,7 @@ function App() {
         <div className="min-h-screen relative">
             <AuthBackground />
             <div className="relative z-10">
-                {isDemoMode && <DemoBanner onExit={handleExitDemoMode} />}
+                {isDemoMode && <DemoBanner onExit={handleExitDemoMode} isAuthenticated={isAuthenticated} />}
                 <div className="container mx-auto px-4 py-8">
                     <header className="mb-12 text-center relative">
                         <div className="absolute right-0 top-0 flex gap-2">
@@ -195,12 +223,24 @@ function App() {
                                     Exit Demo Mode
                                 </button>
                             )}
-                            <button 
-                                onClick={handleLogout}
-                                className="px-4 py-2 bg-leather text-paper font-serif text-sm rounded-lg hover:bg-wood transition-colors"
-                            >
-                                Logout
-                            </button>
+                            {isAuthenticated ? (
+                                <button 
+                                    onClick={handleLogout}
+                                    className="px-4 py-2 bg-leather text-paper font-serif text-sm rounded-lg hover:bg-wood transition-colors"
+                                >
+                                    Logout
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={() => {
+                                        handleExitDemoMode();
+                                        setShowLogin(true);
+                                    }}
+                                    className="px-4 py-2 bg-leather text-paper font-serif text-sm rounded-lg hover:bg-wood transition-colors"
+                                >
+                                    Login / Register
+                                </button>
+                            )}
                         </div>
                         <h1 className="font-display text-5xl text-ink mb-4">
                             Find your next favorite book
@@ -253,10 +293,10 @@ function App() {
                             <div className="text-center">
                                 <button
                                     onClick={handleEnterDemoMode}
-                                    className="px-6 py-3 bg-leather text-paper font-serif text-sm rounded-lg hover:bg-wood transition-colors inline-flex items-center gap-2"
+                                    className="px-6 py-3 bg-leather/10 text-leather hover:bg-leather/20 font-serif text-sm rounded-lg transition-colors inline-flex items-center gap-2"
                                 >
                                     <span className="text-lg">🎮</span>
-                                    Try Demo Mode Instead
+                                    Try Demo Mode
                                 </button>
                             </div>
                         )}
