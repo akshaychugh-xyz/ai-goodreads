@@ -421,6 +421,30 @@ const query = async (text, params = []) => {
       return { rows: [{ exists: data.length > 0 }] };
     }
     
+    // Handle user lookup by ID
+    if (text.includes('SELECT * FROM users WHERE id')) {
+      const [userId] = params;
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', userId);
+      
+      if (error) throw error;
+      return { rows: data };
+    }
+    
+    // Handle user insertion without RETURNING
+    if (text.includes('INSERT INTO users') && !text.includes('RETURNING')) {
+      const [id, email, password, created_at] = params;
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .insert([{ id, email, password, created_at }])
+        .select();
+      
+      if (error) throw error;
+      return { rows: data };
+    }
+    
     // For unhandled queries, log and return empty result
     console.warn('Unhandled Supabase query:', text);
     return { rows: [] };
