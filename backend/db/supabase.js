@@ -4,6 +4,23 @@ require('dotenv').config();
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
+console.log('Supabase module loading...');
+console.log('SUPABASE_URL:', supabaseUrl ? 'SET' : 'NOT SET');
+console.log('SUPABASE_ANON_KEY:', supabaseKey ? 'SET' : 'NOT SET');
+console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET');
+
+if (!supabaseUrl) {
+  throw new Error('SUPABASE_URL environment variable is not set');
+}
+
+if (!supabaseKey) {
+  throw new Error('SUPABASE_ANON_KEY environment variable is not set');
+}
+
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set');
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // For server-side operations, you might want to use the service role key

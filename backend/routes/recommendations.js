@@ -8,6 +8,24 @@ const axios = require('axios');
 const { verifyToken} = require('../auth');
 const { generateUserSummary } = require('../services/geminiService');
 
+// Add simple test endpoint at the top
+router.get('/test', (req, res) => {
+    try {
+        console.log('Simple test endpoint called');
+        res.json({ 
+            message: 'Test endpoint working',
+            timestamp: new Date().toISOString(),
+            environment: {
+                NODE_ENV: process.env.NODE_ENV,
+                USE_SUPABASE: process.env.USE_SUPABASE
+            }
+        });
+    } catch (error) {
+        console.error('Test endpoint error:', error);
+        res.status(500).json({ error: 'Test failed', details: error.message });
+    }
+});
+
 // Add this function at the top of your file
 function generatePersonalityTags(shelfCounts, readingStats, topAuthor, topRatedBooks) {
   const tags = [];
@@ -520,20 +538,46 @@ router.get('/debug', async (req, res) => {
         
         console.log('Environment variables:', envCheck);
         
-        // Test database connection
-        const testResult = await pool.query('SELECT NOW()');
-        console.log('Database test result:', testResult.rows);
+        // Try to import the database module
+        let dbStatus = 'NOT_TESTED';
+        let dbError = null;
         
-        // Test demo user exists
-        const demoUserResult = await pool.query('SELECT COUNT(*) FROM books WHERE user_id = $1', [1]);
-        console.log('Demo user books count:', demoUserResult.rows);
+        try {
+            console.log('Attempting to import database module...');
+            const { pool } = require('../db/database-switcher');
+            dbStatus = 'IMPORTED';
+            
+            console.log('Attempting database connection...');
+            const testResult = await pool.query('SELECT NOW()');
+            console.log('Database test result:', testResult.rows);
+            dbStatus = 'CONNECTED';
+            
+            // Test demo user exists
+            console.log('Checking demo user...');
+            const demoUserResult = await pool.query('SELECT COUNT(*) FROM books WHERE user_id = $1', [1]);
+            console.log('Demo user books count:', demoUserResult.rows);
+            dbStatus = 'QUERY_SUCCESS';
+            
+            res.json({
+                environment: envCheck,
+                databaseStatus: dbStatus,
+                databaseConnection: 'OK',
+                databaseTime: testResult.rows[0],
+                demoUserBooksCount: demoUserResult.rows[0]
+            });
+        } catch (dbErr) {
+            console.error('Database error:', dbErr);
+            dbError = dbErr.message;
+            dbStatus = 'ERROR';
+            
+            res.json({
+                environment: envCheck,
+                databaseStatus: dbStatus,
+                databaseError: dbError,
+                databaseStack: dbErr.stack
+            });
+        }
         
-        res.json({
-            environment: envCheck,
-            databaseConnection: 'OK',
-            databaseTime: testResult.rows[0],
-            demoUserBooksCount: demoUserResult.rows[0]
-        });
     } catch (error) {
         console.error('Debug endpoint error:', error);
         res.status(500).json({
