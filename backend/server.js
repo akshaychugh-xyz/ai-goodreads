@@ -5,14 +5,54 @@ const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { initializeDatabase } = require('./db/database-switcher');
-const authRoutes = require('./routes/auth');
-const protectedRoutes = require('./routes/protectedRoutes');
-const importRoutes = require('./routes/importRoutes');
-const recommendationsRouter = require('./routes/recommendations');
-const { verifyToken } = require('./auth');
-const { importBooks } = require('./importGoodreadsData');
-const { getShelfCounts } = require('./shelfCounts');
+
+// Wrap database imports in try-catch to prevent startup crashes
+let initializeDatabase;
+let authRoutes;
+let protectedRoutes;
+let importRoutes;
+let recommendationsRouter;
+let verifyToken;
+let importBooks;
+let getShelfCounts;
+
+try {
+  console.log('Loading database modules...');
+  const dbModule = require('./db/database-switcher');
+  initializeDatabase = dbModule.initializeDatabase;
+  
+  console.log('Loading route modules...');
+  authRoutes = require('./routes/auth');
+  protectedRoutes = require('./routes/protectedRoutes');
+  importRoutes = require('./routes/importRoutes');
+  recommendationsRouter = require('./routes/recommendations');
+  
+  console.log('Loading auth module...');
+  const authModule = require('./auth');
+  verifyToken = authModule.verifyToken;
+  
+  console.log('Loading import modules...');
+  const importModule = require('./importGoodreadsData');
+  importBooks = importModule.importBooks;
+  
+  const shelfModule = require('./shelfCounts');
+  getShelfCounts = shelfModule.getShelfCounts;
+  
+  console.log('All modules loaded successfully');
+} catch (error) {
+  console.error('Error loading modules:', error);
+  console.error('Environment check:', {
+    USE_SUPABASE: process.env.USE_SUPABASE,
+    SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET',
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET'
+  });
+  
+  // Create dummy functions to prevent crashes
+  initializeDatabase = () => console.log('Database initialization skipped due to module load error');
+  verifyToken = (req, res, next) => {
+    res.status(500).json({ error: 'Server configuration error', details: 'Database modules failed to load' });
+  };
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -70,11 +110,21 @@ app.use((req, res, next) => {
 });
 
 // Use the auth routes
-app.use('/auth', authRoutes);
+if (authRoutes) {
+  app.use('/auth', authRoutes);
+}
 
-app.use('/api', verifyToken, protectedRoutes);
-app.use('/api', verifyToken, importRoutes);
-app.use('/api', verifyToken, recommendationsRouter);
+if (protectedRoutes && verifyToken) {
+  app.use('/api', verifyToken, protectedRoutes);
+}
+
+if (importRoutes && verifyToken) {
+  app.use('/api', verifyToken, importRoutes);
+}
+
+if (recommendationsRouter && verifyToken) {
+  app.use('/api', verifyToken, recommendationsRouter);
+}
 
 app.get('/', (req, res) => {
   res.send('Hello from BetterReads backend!');
@@ -131,4 +181,6 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-initializeDatabase();
+if (initializeDatabase) {
+  initializeDatabase();
+}
