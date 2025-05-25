@@ -1,4 +1,4 @@
-const { pool } = require('./db/database');
+const { pool } = require('./db/database-switcher');
 
 async function getShelfCounts(userId) {
   try {

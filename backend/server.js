@@ -5,7 +5,7 @@ const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { initializeDatabase } = require('./db/database');
+const { initializeDatabase } = require('./db/database-switcher');
 const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protectedRoutes');
 const importRoutes = require('./routes/importRoutes');
@@ -36,8 +36,7 @@ const corsOptions = {
     origin: function (origin, callback) {
         const allowedOrigins = [
             'https://better-reads.akshaychugh.xyz',
-            'http://localhost:3000',
-            'https://betterreads-backend-23631affce1d.herokuapp.com'
+            'http://localhost:3000'
         ];
         
         // Allow requests with no origin (like mobile apps or curl requests)

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../db/database');
+const { pool } = require('../db/database-switcher');
 const { generateToken, hashPassword, comparePassword } = require('../auth');
 
 router.post('/register', async (req, res) => {

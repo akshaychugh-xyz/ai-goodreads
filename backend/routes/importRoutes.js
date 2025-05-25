@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { DATA_DIR } = require('../config');
 const { verifyToken } = require('../auth');
-const { pool } = require('../db/database');
+const { pool } = require('../db/database-switcher');
 const { importBooks } = require('../importGoodreadsData');
 const { getShelfCounts } = require('../shelfCounts');
 

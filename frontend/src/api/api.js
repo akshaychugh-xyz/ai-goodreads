@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const API_URL = process.env.NODE_ENV === 'production'
-  ? 'https://betterreads-backend-23631affce1d.herokuapp.com/api'
+  ? '/api'
   : 'http://localhost:3001/api';
 
 const axiosInstance = axios.create({

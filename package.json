@@ -2,6 +2,7 @@
     "name": "ai-goodreads",
     "version": "1.0.0",
     "scripts": {
+      "start": "cd backend && npm start",
       "vercel-build": "cd frontend && npm install && npm run build"
     }
   }

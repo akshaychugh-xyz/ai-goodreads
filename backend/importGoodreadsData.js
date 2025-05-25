@@ -1,6 +1,6 @@
 const fs = require('fs');
 const csv = require('csv-parser');
-const { pool } = require('./db/database');
+const { pool } = require('./db/database-switcher');
 
 async function importBooks(filePath, userId) {
 	console.log(`Importing books for user ${userId} from file ${filePath}`);
