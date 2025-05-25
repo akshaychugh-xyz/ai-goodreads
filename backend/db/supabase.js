@@ -151,6 +151,108 @@ const query = async (text, params = []) => {
       return { rows: result };
     }
 
+    // Handle top rated books query
+    if (text.includes('my_rating IS NOT NULL') && text.includes('ORDER BY my_rating DESC')) {
+      const userId = params && params.length > 0 ? params[0] : null;
+      
+      if (!userId) {
+        console.warn('Top rated books query without user_id parameter');
+        return { rows: [] };
+      }
+      
+      const { data, error } = await supabaseAdmin
+        .from('books')
+        .select('title, author, my_rating')
+        .eq('user_id', userId)
+        .not('my_rating', 'is', null)
+        .order('my_rating', { ascending: false })
+        .limit(3);
+      
+      if (error) throw error;
+      return { rows: data };
+    }
+
+    // Handle top author query with book count and read count
+    if (text.includes('GROUP BY author') && text.includes('book_count') && text.includes('read_count')) {
+      const userId = params && params.length > 0 ? params[0] : null;
+      
+      if (!userId) {
+        console.warn('Top author query without user_id parameter');
+        return { rows: [] };
+      }
+      
+      const { data, error } = await supabaseAdmin
+        .from('books')
+        .select('author, exclusive_shelf')
+        .eq('user_id', userId)
+        .not('author', 'is', null)
+        .neq('author', '');
+      
+      if (error) throw error;
+      
+      // Group by author manually
+      const authorCounts = data.reduce((acc, book) => {
+        if (!acc[book.author]) {
+          acc[book.author] = { book_count: 0, read_count: 0 };
+        }
+        acc[book.author].book_count++;
+        if (book.exclusive_shelf === 'read') {
+          acc[book.author].read_count++;
+        }
+        return acc;
+      }, {});
+      
+      // Convert to result format and sort
+      const result = Object.entries(authorCounts)
+        .map(([author, counts]) => ({
+          author,
+          book_count: counts.book_count.toString(),
+          read_count: counts.read_count.toString()
+        }))
+        .sort((a, b) => {
+          // Sort by read count first, then book count
+          if (parseInt(b.read_count) !== parseInt(a.read_count)) {
+            return parseInt(b.read_count) - parseInt(a.read_count);
+          }
+          return parseInt(b.book_count) - parseInt(a.book_count);
+        });
+      
+      return { rows: result.slice(0, 1) }; // LIMIT 1
+    }
+
+    // Handle reading stats query (avg length, max pages, count)
+    if (text.includes('ROUND(AVG(number_of_pages))') && text.includes('MAX(number_of_pages)')) {
+      const userId = params && params.length > 0 ? params[0] : null;
+      
+      if (!userId) {
+        console.warn('Reading stats query without user_id parameter');
+        return { rows: [{ avg_length: 0, longest_book: 0, books_read: 0 }] };
+      }
+      
+      const { data, error } = await supabaseAdmin
+        .from('books')
+        .select('number_of_pages')
+        .eq('user_id', userId)
+        .eq('exclusive_shelf', 'read')
+        .not('number_of_pages', 'is', null);
+      
+      if (error) throw error;
+      
+      if (data.length === 0) {
+        return { rows: [{ avg_length: 0, longest_book: 0, books_read: 0 }] };
+      }
+      
+      const pages = data.map(book => book.number_of_pages);
+      const avgLength = Math.round(pages.reduce((sum, p) => sum + p, 0) / pages.length);
+      const longestBook = Math.max(...pages);
+      
+      return { rows: [{ 
+        avg_length: avgLength, 
+        longest_book: longestBook, 
+        books_read: data.length 
+      }] };
+    }
+    
     // Handle author grouping queries
     if (text.includes('GROUP BY author')) {
       const userId = params && params.length > 0 ? params[0] : null;
