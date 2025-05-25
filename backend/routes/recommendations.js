@@ -2,11 +2,25 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db/database-switcher');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
 const { importGoodreadsData } = require('../importGoodreadsData');
 const axios = require('axios');
 const { verifyToken} = require('../auth');
 const { generateUserSummary } = require('../services/geminiService');
+const fs = require('fs');
+
+// Use /tmp directory in production (Vercel), uploads in development
+const uploadDir = process.env.NODE_ENV === 'production' ? '/tmp/uploads' : 'uploads/';
+
+// Ensure upload directory exists
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (error) {
+  console.error('Error creating upload directory:', error);
+}
+
+const upload = multer({ dest: uploadDir });
 
 // Add simple test endpoint at the top
 router.get('/test', (req, res) => {

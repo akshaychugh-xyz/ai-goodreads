@@ -1,10 +1,25 @@
 const OpenAI = require('openai');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialize OpenAI client to avoid startup crashes
+let openai = null;
+
+function getOpenAIClient() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 async function generateUserSummary(userData) {
+  const client = getOpenAIClient();
+  
+  if (!client) {
+    console.log('OpenAI API key not available, skipping AI summary generation');
+    throw new Error('OpenAI API key not configured');
+  }
+
   const prompt = `
     You are the world's leading standup comic and have a great witty, sarcastic and brutally sassy sense of humour. Based on this user's reading data, create a funny and engaging summary:
 
@@ -32,7 +47,7 @@ async function generateUserSummary(userData) {
     Important: Keep the tone light-hearted and entertaining. Make it sound like a friend teasing another friend about their reading habits.
   `;
 
-  const completion = await openai.chat.completions.create({
+  const completion = await client.chat.completions.create({
     model: "gpt-3.5-turbo",
     messages: [
       {

@@ -11,7 +11,19 @@ const { getShelfCounts } = require('../shelfCounts');
 
 const router = express.Router();
 
-const upload = multer({ dest: 'uploads/' });
+// Use /tmp directory in production (Vercel), uploads in development
+const uploadDir = process.env.NODE_ENV === 'production' ? '/tmp/uploads' : 'uploads/';
+
+// Ensure upload directory exists
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (error) {
+  console.error('Error creating upload directory:', error);
+}
+
+const upload = multer({ dest: uploadDir });
 
 router.post('/verify-csv', verifyToken, upload.single('file'), (req, res) => {
     console.log('Received verify-csv request');

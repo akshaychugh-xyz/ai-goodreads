@@ -57,20 +57,28 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Ensure DATA_DIR exists
-const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+// Use /tmp directory in production (Vercel), local directory in development
+const DATA_DIR = process.env.NODE_ENV === 'production' 
+  ? '/tmp/data' 
+  : path.join(__dirname, 'data');
 
-console.log('DATA_DIR:', DATA_DIR);
-fs.access(DATA_DIR, fs.constants.W_OK, (err) => {
-  if (err) {
-    console.error('DATA_DIR is not writable:', err);
-  } else {
-    console.log('DATA_DIR is writable');
+// Safely create DATA_DIR
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-});
+  console.log('DATA_DIR:', DATA_DIR);
+  fs.access(DATA_DIR, fs.constants.W_OK, (err) => {
+    if (err) {
+      console.error('DATA_DIR is not writable:', err);
+    } else {
+      console.log('DATA_DIR is writable');
+    }
+  });
+} catch (error) {
+  console.error('Error creating DATA_DIR:', error);
+  console.log('Continuing without DATA_DIR - file uploads may not work');
+}
 
 const corsOptions = {
     origin: function (origin, callback) {
@@ -100,8 +108,16 @@ app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(cookieParser());
 
-// Configure multer for file uploads
-const upload = multer({ dest: 'uploads/' });
+// Configure multer for file uploads - use /tmp in production
+const uploadDir = process.env.NODE_ENV === 'production' ? '/tmp/uploads' : 'uploads/';
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (error) {
+  console.error('Error creating upload directory:', error);
+}
+const upload = multer({ dest: uploadDir });
 
 // Log all incoming requests to debug routing
 app.use((req, res, next) => {
