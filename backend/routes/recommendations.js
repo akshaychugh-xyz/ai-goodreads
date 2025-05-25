@@ -321,8 +321,14 @@ router.get('/library-stats', verifyToken, async (req, res) => {
     try {
         const userId = getUserId(req);
         console.log('Fetching library stats for user:', userId, 'Demo mode:', req.query.isDemoMode);
+        console.log('Environment check:', {
+            USE_SUPABASE: process.env.USE_SUPABASE,
+            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET',
+            SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET'
+        });
 
         // Get shelf distribution
+        console.log('Starting shelf distribution query...');
         const shelfResult = await pool.query(`
             SELECT exclusive_shelf, COUNT(*) 
             FROM books 
@@ -330,8 +336,10 @@ router.get('/library-stats', verifyToken, async (req, res) => {
             GROUP BY exclusive_shelf`,
             [userId]
         );
+        console.log('Shelf result:', shelfResult.rows);
 
         // Get top rated books
+        console.log('Starting top rated books query...');
         const topBooksResult = await pool.query(`
             SELECT title, author, my_rating 
             FROM books 
@@ -341,8 +349,10 @@ router.get('/library-stats', verifyToken, async (req, res) => {
             LIMIT 3`,
             [userId]
         );
+        console.log('Top books result:', topBooksResult.rows);
 
         // Get top author
+        console.log('Starting top author query...');
         const topAuthorResult = await pool.query(`
             SELECT 
                 author,
@@ -357,8 +367,10 @@ router.get('/library-stats', verifyToken, async (req, res) => {
             LIMIT 1`,
             [userId]
         );
+        console.log('Top author result:', topAuthorResult.rows);
 
         // Get reading stats
+        console.log('Starting reading stats query...');
         const readingStatsResult = await pool.query(`
             SELECT 
                 ROUND(AVG(number_of_pages)) as avg_length,
@@ -368,6 +380,7 @@ router.get('/library-stats', verifyToken, async (req, res) => {
             WHERE user_id = $1 AND exclusive_shelf = 'read'`,
             [userId]
         );
+        console.log('Reading stats result:', readingStatsResult.rows);
 
         const stats = {
             shelfDistribution: shelfResult.rows,
@@ -395,7 +408,12 @@ router.get('/library-stats', verifyToken, async (req, res) => {
         res.json(stats);
     } catch (error) {
         console.error('Error fetching library stats:', error);
-        res.status(500).json({ error: 'Failed to fetch library stats' });
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Failed to fetch library stats',
+            details: error.message,
+            stack: error.stack
+        });
     }
 });
 
@@ -486,5 +504,44 @@ function generateFallbackSummary(userData) {
   
   return summary;
 }
+
+// Add debug endpoint
+router.get('/debug', async (req, res) => {
+    try {
+        console.log('Debug endpoint called');
+        
+        const envCheck = {
+            NODE_ENV: process.env.NODE_ENV,
+            USE_SUPABASE: process.env.USE_SUPABASE,
+            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET',
+            SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
+            SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET'
+        };
+        
+        console.log('Environment variables:', envCheck);
+        
+        // Test database connection
+        const testResult = await pool.query('SELECT NOW()');
+        console.log('Database test result:', testResult.rows);
+        
+        // Test demo user exists
+        const demoUserResult = await pool.query('SELECT COUNT(*) FROM books WHERE user_id = $1', [1]);
+        console.log('Demo user books count:', demoUserResult.rows);
+        
+        res.json({
+            environment: envCheck,
+            databaseConnection: 'OK',
+            databaseTime: testResult.rows[0],
+            demoUserBooksCount: demoUserResult.rows[0]
+        });
+    } catch (error) {
+        console.error('Debug endpoint error:', error);
+        res.status(500).json({
+            error: 'Debug failed',
+            details: error.message,
+            stack: error.stack
+        });
+    }
+});
 
 module.exports = router;
